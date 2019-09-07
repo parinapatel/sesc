@@ -1,0 +1,96 @@
+# Bench : /home/cs6290/sesc/sesc.opt -f HyA -c /home/cs6290/sesc/confs/cmp4-noc.conf -ort.out -ert.err raytrace.mipseb -p1 -m128 -a2 Input/reduced.env 
+# File  : /home/cs6290/sesc/apps/Splash2/raytrace/sesc_raytrace.mipseb.HyA :       Thu Sep  5 20:46:01 2019
+      Exe Speed        Exe MHz         Exe Time         Sim Time (1000MHz)
+    445.833 KIPS      0.4838 MHz     465.850 secs     225.359 msec
+Proc  Avg.Time BPType       Total          RAS           BPred          BTB            BTAC
+   0   20.577  Hybrid       85.67% (100.00% of   9.43%)  84.18% ( 79.31% of  48.05%)   0.00% 
+           nInst     BJ    Load   Store      INT      FP  : LD Forward , Replay : Worst Unit (clk)
+   0   207691392  11.70%  24.31%  11.76%  40.06%  12.18%  :     12.29%     547 inst/repl  :  LDSTIssueX 2.97 
+Proc  IPC        Cycles  Busy   LDQ   STQ  IWin   ROB  Regs Ports   TLB  maxBr MisBr Br4Clk  Other
+   0  0.92    225359336  46.1   0.0   0.0   2.1  19.7   0.0   0.0   0.0   0.0   30.6    0.1    1.4 
+################################################################################
+Proc  Cache Occ MissRate (RD, WR) %DMemAcc MB/s : ... 
+   0  DL1 0.0   1.02% ( 0.9%, 0.1%) 94.16%  0.20GB/s :  MemoryBus 0 MB/s : 
+################################################################################
+Proc  Cache Occ MissRate (RD, WR) %DMemAcc MB/s : ... 
+   0  IL1 0.0   0.07% ( 0.1%, 0.0%) 144.79%  0.02GB/s :  MemoryBus 0 MB/s : 
+# Bench : /home/cs6290/sesc/sesc.opt -f HyC -c /home/cs6290/sesc/confs/cmp4-noc.conf -ort.out -ert.err raytrace.mipseb -p1 -m128 -a2 Input/reduced.env 
+# File  : /home/cs6290/sesc/apps/Splash2/raytrace/sesc_raytrace.mipseb.HyC :       Thu Sep  5 21:58:10 2019
+      Exe Speed        Exe MHz         Exe Time         Sim Time (1000MHz)
+    421.683 KIPS      0.5082 MHz     492.530 secs     250.304 msec
+Proc  Avg.Time BPType       Total          RAS           BPred          BTB            BTAC
+   0   28.974  Hybrid       85.67% (100.00% of   9.43%)  84.18% ( 79.31% of  48.05%)   0.00% 
+           nInst     BJ    Load   Store      INT      FP  : LD Forward , Replay : Worst Unit (clk)
+   0   207691392  11.70%  24.31%  11.76%  40.06%  12.18%  :     11.79%     555 inst/repl  :  LDSTIssueX 2.85 
+Proc  IPC        Cycles  Busy   LDQ   STQ  IWin   ROB  Regs Ports   TLB  maxBr MisBr Br4Clk  Other
+   0  0.83    250303858  41.5   0.0   0.0   1.9  17.0   0.0   0.0   0.0   0.0   38.3    0.0    1.3 
+################################################################################
+Proc  Cache Occ MissRate (RD, WR) %DMemAcc MB/s : ... 
+   0  DL1 0.0   1.02% ( 0.9%, 0.1%) 94.49%  0.18GB/s :  MemoryBus 0 MB/s : 
+################################################################################
+Proc  Cache Occ MissRate (RD, WR) %DMemAcc MB/s : ... 
+   0  IL1 0.0   0.07% ( 0.1%, 0.0%) 144.80%  0.02GB/s :  MemoryBus 0 MB/s : 
+# Bench : /home/cs6290/sesc/sesc.opt -f NTA -c /home/cs6290/sesc/confs/cmp4-noc.conf -ort.out -ert.err raytrace.mipseb -p1 -m128 -a2 Input/reduced.env 
+# File  : /home/cs6290/sesc/apps/Splash2/raytrace/sesc_raytrace.mipseb.NTA :       Thu Sep  5 21:10:11 2019
+      Exe Speed        Exe MHz         Exe Time         Sim Time (1000MHz)
+    388.411 KIPS      0.5788 MHz     534.720 secs     309.511 msec
+Proc  Avg.Time BPType       Total          RAS           BPred          BTB            BTAC
+   0   15.917  NotTaken     49.63% (100.00% of   9.43%)  44.39% (  0.00% of   0.00%)   0.00% 
+           nInst     BJ    Load   Store      INT      FP  : LD Forward , Replay : Worst Unit (clk)
+   0   207691392  11.70%  24.31%  11.76%  40.06%  12.18%  :      6.22%     863 inst/repl  :  LDSTIssueX 1.90 
+Proc  IPC        Cycles  Busy   LDQ   STQ  IWin   ROB  Regs Ports   TLB  maxBr MisBr Br4Clk  Other
+   0  0.67    309510920  33.6   0.0   0.0   1.4   2.1   0.0   0.0   0.0   0.0   62.7    0.0    0.2 
+################################################################################
+Proc  Cache Occ MissRate (RD, WR) %DMemAcc MB/s : ... 
+   0  DL1 0.0   0.98% ( 0.9%, 0.1%) 97.71%  0.15GB/s :  MemoryBus 0 MB/s : 
+################################################################################
+Proc  Cache Occ MissRate (RD, WR) %DMemAcc MB/s : ... 
+   0  IL1 0.0   0.07% ( 0.1%, 0.0%) 144.64%  0.02GB/s :  MemoryBus 0 MB/s : 
+# Bench : /home/cs6290/sesc/sesc.opt -f NTC -c /home/cs6290/sesc/confs/cmp4-noc.conf -ort.out -ert.err raytrace.mipseb -p1 -m128 -a2 Input/reduced.env 
+# File  : /home/cs6290/sesc/apps/Splash2/raytrace/sesc_raytrace.mipseb.NTC :       Thu Sep  5 21:28:36 2019
+      Exe Speed        Exe MHz         Exe Time         Sim Time (1000MHz)
+    336.228 KIPS      0.6521 MHz     617.710 secs     402.817 msec
+Proc  Avg.Time BPType       Total          RAS           BPred          BTB            BTAC
+   0   23.827  NotTaken     49.63% (100.00% of   9.43%)  44.39% (  0.00% of   0.00%)   0.00% 
+           nInst     BJ    Load   Store      INT      FP  : LD Forward , Replay : Worst Unit (clk)
+   0   207691392  11.70%  24.31%  11.76%  40.06%  12.18%  :      4.45%    1008 inst/repl  :  LDSTIssueX 1.70 
+Proc  IPC        Cycles  Busy   LDQ   STQ  IWin   ROB  Regs Ports   TLB  maxBr MisBr Br4Clk  Other
+   0  0.52    402817352  25.8   0.0   0.0   1.0   1.0   0.0   0.0   0.0   0.0   72.0    0.0    0.2 
+################################################################################
+Proc  Cache Occ MissRate (RD, WR) %DMemAcc MB/s : ... 
+   0  DL1 0.0   0.97% ( 0.9%, 0.1%) 98.67%  0.11GB/s :  MemoryBus 0 MB/s : 
+################################################################################
+Proc  Cache Occ MissRate (RD, WR) %DMemAcc MB/s : ... 
+   0  IL1 0.0   0.07% ( 0.1%, 0.0%) 144.65%  0.01GB/s :  MemoryBus 0 MB/s : 
+# Bench : /home/cs6290/sesc/sesc.opt -f OrA -c /home/cs6290/sesc/confs/cmp4-noc.conf -ort.out -ert.err raytrace.mipseb -p1 -m128 -a2 Input/reduced.env 
+# File  : /home/cs6290/sesc/apps/Splash2/raytrace/sesc_raytrace.mipseb.OrA :       Thu Sep  5 20:56:57 2019
+      Exe Speed        Exe MHz         Exe Time         Sim Time (1000MHz)
+    494.727 KIPS      0.5068 MHz     419.810 secs     212.764 msec
+Proc  Avg.Time BPType       Total          RAS           BPred          BTB            BTAC
+   0   19.615  Oracle       89.26% (100.00% of   9.43%)  88.14% ( 78.67% of  50.37%)   0.00% 
+           nInst     BJ    Load   Store      INT      FP  : LD Forward , Replay : Worst Unit (clk)
+   0   207691392  11.70%  24.31%  11.76%  40.06%  12.18%  :     13.16%     505 inst/repl  :  LDSTIssueX 3.06 
+Proc  IPC        Cycles  Busy   LDQ   STQ  IWin   ROB  Regs Ports   TLB  maxBr MisBr Br4Clk  Other
+   0  0.98    212764015  48.8   0.0   0.0   2.3  24.9   0.0   0.0   0.0   0.0   22.4    0.1    1.5 
+################################################################################
+Proc  Cache Occ MissRate (RD, WR) %DMemAcc MB/s : ... 
+   0  DL1 0.0   1.02% ( 0.9%, 0.1%) 93.70%  0.22GB/s :  MemoryBus 0 MB/s : 
+################################################################################
+Proc  Cache Occ MissRate (RD, WR) %DMemAcc MB/s : ... 
+   0  IL1 0.0   0.07% ( 0.1%, 0.0%) 144.65%  0.02GB/s :  MemoryBus 0 MB/s : 
+# Bench : /home/cs6290/sesc/sesc.opt -f OrC -c /home/cs6290/sesc/confs/cmp4-noc.conf -ort.out -ert.err raytrace.mipseb -p1 -m128 -a2 Input/reduced.env 
+# File  : /home/cs6290/sesc/apps/Splash2/raytrace/sesc_raytrace.mipseb.OrC :       Thu Sep  5 21:46:46 2019
+      Exe Speed        Exe MHz         Exe Time         Sim Time (1000MHz)
+    440.491 KIPS      0.4899 MHz     471.500 secs     230.990 msec
+Proc  Avg.Time BPType       Total          RAS           BPred          BTB            BTAC
+   0   28.187  Oracle       89.26% (100.00% of   9.43%)  88.14% ( 78.67% of  50.37%)   0.00% 
+           nInst     BJ    Load   Store      INT      FP  : LD Forward , Replay : Worst Unit (clk)
+   0   207691392  11.70%  24.31%  11.76%  40.06%  12.18%  :     12.67%     516 inst/repl  :  LDSTIssueX 2.95 
+Proc  IPC        Cycles  Busy   LDQ   STQ  IWin   ROB  Regs Ports   TLB  maxBr MisBr Br4Clk  Other
+   0  0.90    230989637  45.0   0.0   0.0   2.0  22.2   0.0   0.0   0.0   0.0   29.4    0.1    1.4 
+################################################################################
+Proc  Cache Occ MissRate (RD, WR) %DMemAcc MB/s : ... 
+   0  DL1 0.0   1.02% ( 0.9%, 0.1%) 94.01%  0.20GB/s :  MemoryBus 0 MB/s : 
+################################################################################
+Proc  Cache Occ MissRate (RD, WR) %DMemAcc MB/s : ... 
+   0  IL1 0.0   0.07% ( 0.1%, 0.0%) 144.65%  0.02GB/s :  MemoryBus 0 MB/s : 
