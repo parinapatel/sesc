@@ -319,11 +319,79 @@ void BPTaken::switchOut(Pid_t pid)
 /*****************************************
  * BPNotTaken
  */
+BPNotTaken::~BPNotTaken()
+{
+        int counter_1=0;
+        int counter_2=0;
+        int counter_3=0;
+        int counter_4=0;
+    for(int i = 0; i < MAX_INSTURCTION; i++){
+        counter[i] = missed[i] + hit[i];
+    }
+
+    for(int i = 0; i < MAX_INSTURCTION; i++){
+        if (counter[i]==0) break;
+        if(counter[i] < 10 && counter[i] > 0){
+            Binstruction[0] += counter[i];
+            Bhit_counter[0] += hit[i];
+            counter_1++;
+        }
+        else if(counter[i] < 100 && counter[i] >= 10){
+            Binstruction[1] += counter[i];
+            Bhit_counter[1] += hit[i];
+            counter_2++;
+        }
+        else if(counter[i] < 1000 && counter[i] >= 100){
+            Binstruction[2] += counter[i];
+            Bhit_counter[2] += hit[i];
+            counter_3++;
+        }
+        else if (counter[i] >= 1000) {
+            Binstruction[3] += counter[i];
+            Bhit_counter[3] += hit[i];
+            counter_4++;
+        }
+    }
+    if(counter[0] != 0){ 
+    std::cout << "1-9     All: " << Binstruction[0] <<"   Correct: " << Bhit_counter[0] <<"   Miss: " << Binstruction[0] - Bhit_counter[0] << "  Inst Number:" << counter_1 << std::endl;
+    std::cout << "10-99   All: " << Binstruction[1] <<"   Correct: " << Bhit_counter[1] <<"   Miss: " << Binstruction[1] - Bhit_counter[1] <<"  Inst Number:" << counter_2 << std::endl;
+    std::cout << "100-999 All: " << Binstruction[2] <<"   Correct: " << Bhit_counter[2] <<"   Miss: " << Binstruction[2] - Bhit_counter[2] << "  Inst Number:" << counter_3 << std::endl;
+    std::cout << "1000+   All: " << Binstruction[3] <<"   Correct: " << Bhit_counter[3] <<"   Miss: " << Binstruction[3] - Bhit_counter[3] << "  Inst Number:" << counter_4 << std::endl;
+    // if(counter[0] != 0)
+        //Output the overall Accuracy, should match lable "BPred" in the report of simulator
+        std::cout << "Accuracy : " << double((Bhit_counter[0] + Bhit_counter[1] + Bhit_counter[2] + Bhit_counter[3]))/double(Binstruction[0] + Binstruction[1] + Binstruction[2] + Binstruction[3]) << std::endl; 
+    std::cout << "================================================================================" << std::endl; }
+
+}
 
 PredType  BPNotTaken::predict(const Instruction * inst, InstID oracleID, bool doUpdate)
 {
+    int branch_id = 0;
     bpredEnergy->inc();
-
+    for (int i = 0; i < MAX_INSTURCTION; i++)
+        {
+            if (total_InstID[i] == inst->currentID()){
+                branch_id = i ;
+                break;
+            }
+            // If given instruction is empty assign Currnet Instuction to Empty instuction.
+            else if (total_InstID[i] == 0)
+            {
+                total_InstID[i] = inst-> currentID();
+                branch_id =i ;
+                break;
+            }
+            
+        }
+        if (inst->calcNextInstID() == oracleID)
+        {
+            hit[branch_id]++;
+        }else
+        {
+            missed[branch_id]++;
+        }
+        
+        
     return inst->calcNextInstID() == oracleID ? CorrectPrediction : MissPrediction;
 }
 
@@ -564,6 +632,7 @@ BPHybrid::~BPHybrid()
     }
 
     for(int i = 0; i < MAX_INSTURCTION; i++){
+        if (counter[i]==0) break;
         if(counter[i] < 10 && counter[i] > 0){
             Binstruction[0] += counter[i];
             Bhit_counter[0] += hit[i];
@@ -579,21 +648,21 @@ BPHybrid::~BPHybrid()
             Bhit_counter[2] += hit[i];
             counter_3++;
         }
-        else if (counter[i] > 1000) {
+        else if (counter[i] >= 1000) {
             Binstruction[3] += counter[i];
             Bhit_counter[3] += hit[i];
             counter_4++;
         }
     }
-    //if(All[0] != 0){ 
+    if(counter[0] != 0){ 
     std::cout << "1-9     All: " << Binstruction[0] <<"   Correct: " << Bhit_counter[0] <<"   Miss: " << Binstruction[0] - Bhit_counter[0] << "  Inst Number:" << counter_1 << std::endl;
     std::cout << "10-99   All: " << Binstruction[1] <<"   Correct: " << Bhit_counter[1] <<"   Miss: " << Binstruction[1] - Bhit_counter[1] <<"  Inst Number:" << counter_2 << std::endl;
     std::cout << "100-999 All: " << Binstruction[2] <<"   Correct: " << Bhit_counter[2] <<"   Miss: " << Binstruction[2] - Bhit_counter[2] << "  Inst Number:" << counter_3 << std::endl;
     std::cout << "1000+   All: " << Binstruction[3] <<"   Correct: " << Bhit_counter[3] <<"   Miss: " << Binstruction[3] - Bhit_counter[3] << "  Inst Number:" << counter_4 << std::endl;
-    if(counter[0] != 0)
+    // if(counter[0] != 0)
         //Output the overall Accuracy, should match lable "BPred" in the report of simulator
         std::cout << "Accuracy : " << double((Bhit_counter[0] + Bhit_counter[1] + Bhit_counter[2] + Bhit_counter[3]))/double(Binstruction[0] + Binstruction[1] + Binstruction[2] + Binstruction[3]) << std::endl; 
-    std::cout << "================================================================================" << std::endl; 
+    std::cout << "================================================================================" << std::endl; }
 }
 
 
@@ -601,16 +670,10 @@ PredType BPHybrid::predict(const Instruction *inst, InstID oracleID, bool doUpda
 {
     int branch_id = 0;
     bpredEnergy->inc();
-
-    if( inst->isBranchTaken() ){
-            return btb.predict(inst, oracleID, doUpdate);
-    }
-
-
     for (int i = 0; i < MAX_INSTURCTION; i++)
         {
             if (total_InstID[i] == inst->currentID()){
-                branch_id =i ;
+                branch_id = i ;
                 break;
             }
             // If given instruction is empty assign Currnet Instuction to Empty instuction.
@@ -621,7 +684,12 @@ PredType BPHybrid::predict(const Instruction *inst, InstID oracleID, bool doUpda
                 break;
             }
             
-        }        
+        }
+    if( inst->isBranchTaken() ){
+        hit[branch_id]++;
+            return btb.predict(inst, oracleID, doUpdate);
+    }
+
     bool taken = (inst->calcNextInstID() != oracleID);
     HistoryType iID     = calcInstID(inst);
     HistoryType l2Index = ghr;
@@ -658,17 +726,13 @@ PredType BPHybrid::predict(const Instruction *inst, InstID oracleID, bool doUpda
     }
 
     bool ptaken = metaOut ? localTaken : globalTaken;
-
     if (taken != ptaken) {
         if (doUpdate)
             btb.updateOnly(inst,oracleID);
         missed[branch_id]++;
         return MissPrediction;
     }
-    if (ptaken == 0)
-    {
-    hit[branch_id]++;
-    }
+    else    hit[branch_id]++;
 
 
     return ptaken ? btb.predict(inst, oracleID, doUpdate) : CorrectPrediction;

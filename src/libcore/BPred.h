@@ -199,7 +199,7 @@ public:
         :BPred(i, fetchWidth, section, "NotTaken") {
         // Done
     }
-
+    ~BPNotTaken();
     PredType predict(const Instruction * inst, InstID oracleID, bool doUpdate);
 
     void switchIn(Pid_t pid);
