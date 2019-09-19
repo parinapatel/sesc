@@ -34,9 +34,10 @@ Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "CacheCore.h"
 #include "SescConf.h"
 #include "libcore/EnergyMgr.h"
+
 #define k_RANDOM     "RANDOM"
 #define k_LRU        "LRU"
-#define k_NXLRU        "NXLRU"
+#define k_NXLRU      "NXLRU"
 
 //
 // Class CacheGeneric, the combinational logic of Cache
@@ -110,7 +111,6 @@ void CacheGeneric<State, Addr_t, Energy>::createStats(const char *section, const
         const char *number = &name[2];
         procId = atoi(number);
     }
-
     if (Energy) {
         PowerGroup pg;
         pg = getRightStat(type);
@@ -187,7 +187,7 @@ CacheGeneric<State, Addr_t, Energy> *CacheGeneric<State, Addr_t, Energy>::create
             SescConf->isPower2(section, size) &&
             SescConf->isPower2(section, bsize) &&
             SescConf->isPower2(section, assoc) &&
-            SescConf->isInList(section, repl, k_RANDOM, k_LRU , k_NXLRU)) {
+            SescConf->isInList(section, repl, k_RANDOM, k_LRU, k_NXLRU)) {
 
         cache = create(s, a, b, u, pStr, sk);
     } else {
@@ -230,9 +230,8 @@ CacheAssoc<State, Addr_t, Energy>::CacheAssoc(int32_t size, int32_t assoc, int32
         policy = RANDOM;
     else if (strcasecmp(pStr, k_LRU)    == 0)
         policy = LRU;
-    else if (strcasecmp(pStr,k_NXLRU) == 0){ 
+    else if (strcasecmp(pStr, k_NXLRU)    == 0)
         policy = NXLRU;
-        }
     else {
         MSG("Invalid cache policy [%s]",pStr);
         exit(0);
@@ -324,53 +323,48 @@ typename CacheAssoc<State, Addr_t, Energy>::Line
     Line **lineHit=0;
     Line **lineFree=0; // Order of preference, invalid, locked
     Line **setEnd = theSet + assoc;
+    int count = 0;
     Line **buf = 0;
-    int count =0;
+
     // Start in reverse order so that get the youngest invalid possible,
     // and the oldest isLocked possible (lineFree)
     {
         Line **l = setEnd -1;
-        if ( policy == RANDOM || policy == LRU)
-        {
-            while(l >= theSet) {
-                if ((*l)->getTag() == tag) {
-                    lineHit = l;
-                    break;
-                }
-                if (!(*l)->isValid())
-                    lineFree = l;
-                else if (lineFree == 0 && !(*l)->isLocked())
-                    lineFree = l;
+        while(l >= theSet && (policy == RANDOM || policy == LRU)) {
+            if ((*l)->getTag() == tag) {
+                lineHit = l;
+                break;
+            }
+            if (!(*l)->isValid())
+                lineFree = l;
+            else if (lineFree == 0 && !(*l)->isLocked())
+                lineFree = l;
 
-                // If line is invalid, isLocked must be false
-                GI(!(*l)->isValid(), !(*l)->isLocked());
-                l--;
+            // If line is invalid, isLocked must be false
+            GI(!(*l)->isValid(), !(*l)->isLocked());
+            l--;
         }
 
-        }
-        else
-        {
-            while(l >= theSet) {
-                if ((*l)->getTag() == tag) {
-                    lineHit = l;
-                    break;
-                }
-                if (!(*l)->isValid())
+        while(l >= theSet && policy == NXLRU) {
+            if ((*l)->getTag() == tag) {
+                lineHit = l;
+                break;
+            }
+            if (!(*l)->isValid())
+                lineFree = l;
+            else if (lineFree == 0 && !(*l)->isLocked()) {
+                count++;
+                buf = l;
+                if (count == 2)
                     lineFree = l;
-                else if (lineFree == 0 && !(*l)->isLocked()){
-                    count++;
-                    buf = l;
-                    if (count == 2)
-                        lineFree = l;
-                    }
-
-                // If line is invalid, isLocked must be false
-                GI(!(*l)->isValid(), !(*l)->isLocked());
-                l--;
             }
 
+            // If line is invalid, isLocked must be false
+            GI(!(*l)->isValid(), !(*l)->isLocked());
+            l--;
         }
-        
+        if ((policy == NXLRU) && count == 1 && lineFree == 0)
+            lineFree = buf;
     }
     GI(lineFree, !(*lineFree)->isValid() || !(*lineFree)->isLocked());
 
@@ -387,20 +381,14 @@ typename CacheAssoc<State, Addr_t, Energy>::Line
         if (policy == RANDOM) {
             lineFree = &theSet[irand];
             irand = (irand + 1) & maskAssoc;
-        } else if (policy == LRU)
-        {
-            // Get Second oldest Line possible
+        } else if (policy == LRU) {
             I(policy == LRU);
             // Get the oldest line possible
             lineFree = setEnd-1;
-        } else
-        {
+        } else if ((policy == NXLRU)) {
             I(policy == NXLRU);
-            lineFree = setEnd -2 ;
-            
-            // I(policy == LRU);
-            // // Get the oldest line possible
-            // lineFree = setEnd-1;
+            // Get the second oldest line
+            lineFree = setEnd - 2;
         }
     } else if(ignoreLocked) {
         if (policy == RANDOM && (*lineFree)->isValid()) {
@@ -471,8 +459,9 @@ typename CacheDM<State, Addr_t, Energy>::Line *CacheDM<State, Addr_t, Energy>::f
         I(line->isValid());
         return line;
     }
-
+    
     return 0;
+    //return l;
 }
 
 template<class State, class Addr_t, bool Energy>
