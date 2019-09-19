@@ -39,12 +39,16 @@ Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "estl.h"
 
 #include "GStats.h"
-#include "libll/Instruction.h"        // InstID
+#include "libll/Instruction.h"        // InstID typedef uint32_t InstID;
 #include "CacheCore.h"
 #include "EnergyMgr.h"
 #include "SCTable.h"
 
 #define RAP_T_NT_ONLY   1
+
+// Defining Max size of array for easier maniplation
+#define MAX_INSTURCTION 5000
+
 
 enum PredType {
     CorrectPrediction = 0,
@@ -68,6 +72,19 @@ protected:
 
     GStatsCntr nHit;  // N.B. predictors should not update these counters directly
     GStatsCntr nMiss; // in their predict() function.
+
+// Parin Code Starts
+// Defining My Varaibles
+    uint count ;
+    uint counter[MAX_INSTURCTION] ; //total counter 
+    uint missed[MAX_INSTURCTION] ; // total mis prediction counter
+    uint hit[MAX_INSTURCTION] ; // total correct prediction counter
+    InstID total_InstID[MAX_INSTURCTION]; // instruction ID info
+    int Binstruction[4]; // Defining counter for 1-9 ,10-99,100-999,...
+    int Bhit_counter[4]; // Hit Accuracy counter for ^^
+
+// Parin Code Ends
+
 
     GStatsEnergy *bpredEnergy;
     int32_t bpred4Cycle;
@@ -182,7 +199,7 @@ public:
         :BPred(i, fetchWidth, section, "NotTaken") {
         // Done
     }
-
+    ~BPNotTaken();
     PredType predict(const Instruction * inst, InstID oracleID, bool doUpdate);
 
     void switchIn(Pid_t pid);
@@ -282,9 +299,9 @@ protected:
 public:
     BPHybrid(int32_t i, int32_t fetchWidth, const char *section);
     ~BPHybrid();
+    // PredType doPredict(const Instruction *inst, InstID oracleID, bool doUpdate);
 
     PredType predict(const Instruction * inst, InstID oracleID, bool doUpdate);
-
     void switchIn(Pid_t pid);
     void switchOut(Pid_t pid);
 };

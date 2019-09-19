@@ -32,34 +32,34 @@ Total in-flight flits = 0 (0 measured)
 latency change    = nan
 throughput change = nan
 
-Phase 1 time 461469
+Phase 1 time 569500
 Class 0:
 Minimum packet latency = 8
-Average packet latency = 11.0272
+Average packet latency = 11.0257
 Maximum packet latency = 19
 Minimum network latency = 8
-Average network latency = 11.0272
+Average network latency = 11.0257
 Maximum network latency = 19
 Slowest packet = 29
 Minimum flit latency = 8
-Average flit latency = 9.05208
+Average flit latency = 9.04872
 Maximum flit latency = 15
 Slowest flit = 86
 Minimum fragmentation = 0
-Average fragmentation = 0.00907258
+Average fragmentation = 0.0100806
 Maximum fragmentation = 5
-Minimum injected packet rate = 0.000702106 (at node 3)
-Average injected packet rate = 0.00107483
-Maximum injected packet rate = 0.00214966 (at node 0)
-Minimum accepted packet rate = 0.000702106 (at node 3)
-Average accepted packet rate = 0.00107483
-Maximum accepted packet rate = 0.00214966 (at node 0)
-Minimum injected flit rate = 0.00299045 (at node 3)
-Average injected flit rate = 0.00322449
-Maximum injected flit rate = 0.0037619 (at node 0)
-Minimum accepted flit rate = 0.00120918 (at node 1)
-Average accepted flit rate = 0.00322449
-Maximum accepted flit rate = 0.00913604 (at node 0)
+Minimum injected packet rate = 0.00056892 (at node 3)
+Average injected packet rate = 0.000870939
+Maximum injected packet rate = 0.00174188 (at node 0)
+Minimum accepted packet rate = 0.00056892 (at node 3)
+Average accepted packet rate = 0.000870939
+Maximum accepted packet rate = 0.00174188 (at node 0)
+Minimum injected flit rate = 0.00242318 (at node 3)
+Average injected flit rate = 0.00261282
+Maximum injected flit rate = 0.00304829 (at node 0)
+Minimum accepted flit rate = 0.000979807 (at node 1)
+Average accepted flit rate = 0.00261282
+Maximum accepted flit rate = 0.00740299 (at node 0)
 Average injected packet length = 3
 Average accepted packet length = 3
 Total in-flight flits = 0 (0 measured)
@@ -67,35 +67,35 @@ latency change    = nan
 throughput change = 1
 
 Draining remaining packets ...
-Time 461469
+Time 569500
 Total phase 2
-Time taken is 461469 cycles
+Time taken is 569500 cycles
 ====== Traffic class 0 ======
 Overall minimum packet latency = 8 (1 samples)
-Overall average packet latency = 11.0272 (1 samples)
+Overall average packet latency = 11.0257 (1 samples)
 Overall maximum packet latency = 19 (1 samples)
 Overall minimum network latency = 8 (1 samples)
-Overall average network latency = 11.0272 (1 samples)
+Overall average network latency = 11.0257 (1 samples)
 Overall maximum network latency = 19 (1 samples)
 Overall minimum flit latency = 8 (1 samples)
-Overall average flit latency = 9.05208 (1 samples)
+Overall average flit latency = 9.04872 (1 samples)
 Overall maximum flit latency = 15 (1 samples)
 Overall minimum fragmentation = 0 (1 samples)
-Overall average fragmentation = 0.00907258 (1 samples)
+Overall average fragmentation = 0.0100806 (1 samples)
 Overall maximum fragmentation = 5 (1 samples)
-Overall minimum injected packet rate = 0.000702106 (1 samples)
-Overall average injected packet rate = 0.00107483 (1 samples)
-Overall maximum injected packet rate = 0.00214966 (1 samples)
-Overall minimum accepted packet rate = 0.000702106 (1 samples)
-Overall average accepted packet rate = 0.00107483 (1 samples)
-Overall maximum accepted packet rate = 0.00214966 (1 samples)
-Overall minimum injected flit rate = 0.00299045 (1 samples)
-Overall average injected flit rate = 0.00322449 (1 samples)
-Overall maximum injected flit rate = 0.0037619 (1 samples)
-Overall minimum accepted flit rate = 0.00120918 (1 samples)
-Overall average accepted flit rate = 0.00322449 (1 samples)
-Overall maximum accepted flit rate = 0.00913604 (1 samples)
+Overall minimum injected packet rate = 0.00056892 (1 samples)
+Overall average injected packet rate = 0.000870939 (1 samples)
+Overall maximum injected packet rate = 0.00174188 (1 samples)
+Overall minimum accepted packet rate = 0.00056892 (1 samples)
+Overall average accepted packet rate = 0.000870939 (1 samples)
+Overall maximum accepted packet rate = 0.00174188 (1 samples)
+Overall minimum injected flit rate = 0.00242318 (1 samples)
+Overall average injected flit rate = 0.00261282 (1 samples)
+Overall maximum injected flit rate = 0.00304829 (1 samples)
+Overall minimum accepted flit rate = 0.000979807 (1 samples)
+Overall average accepted flit rate = 0.00261282 (1 samples)
+Overall maximum accepted flit rate = 0.00740299 (1 samples)
 Overall average injected packet size = 3 (1 samples)
 Overall average accepted packet size = 3 (1 samples)
 Overall average hops = 2.32661 (1 samples)
-BookSim: Total_run_time 1.19672
+BookSim: Total_run_time 0.868179

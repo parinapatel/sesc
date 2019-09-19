@@ -11,9 +11,11 @@ Blocked Dense LU Factorization
     0             0             0             0             0             0
 
                             TIMING INFORMATION
-Start time                        :       1567746886
-Initialization finish time        :       1567746886
-Overall finish time               :       1567746886
+Start time                        :       1567885098
+Initialization finish time        :       1567885098
+Overall finish time               :       1567885098
 Total time with initialization    :                0
 Total time without initialization :                0
+
+
 
