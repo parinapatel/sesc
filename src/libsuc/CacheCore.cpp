@@ -329,48 +329,32 @@ typename CacheAssoc<State, Addr_t, Energy>::Line
     // Start in reverse order so that get the youngest invalid possible,
     // and the oldest isLocked possible (lineFree)
     {
-        Line **l = setEnd -1;
-        if ( policy == RANDOM || policy == LRU)
+        Line **l = setEnd - 1;
+        while (l >= theSet)
         {
-            while(l >= theSet) {
-                if ((*l)->getTag() == tag) {
-                    lineHit = l;
-                    break;
-                }
-                if (!(*l)->isValid())
+            if ((*l)->getTag() == tag)
+            {
+                lineHit = l;
+                break;
+            }
+            if (!(*l)->isValid())
+                lineFree = l;
+            else if (lineFree == 0 && !(*l)->isLocked())
+            {
+                if (policy == RANDOM || policy == LRU)
                     lineFree = l;
-                else if (lineFree == 0 && !(*l)->isLocked())
-                    lineFree = l;
-
-                // If line is invalid, isLocked must be false
-                GI(!(*l)->isValid(), !(*l)->isLocked());
-                l--;
-        }
-
-        }
-        else
-        {
-            while(l >= theSet) {
-                if ((*l)->getTag() == tag) {
-                    lineHit = l;
-                    break;
-                }
-                if (!(*l)->isValid())
-                    lineFree = l;
-                else if (lineFree == 0 && !(*l)->isLocked()){
+                else
+                {
                     count++;
                     buf = l;
                     if (count == 2)
                         lineFree = l;
-                    }
-
-                // If line is invalid, isLocked must be false
-                GI(!(*l)->isValid(), !(*l)->isLocked());
-                l--;
+                }
             }
-
+            // If line is invalid, isLocked must be false
+            GI(!(*l)->isValid(), !(*l)->isLocked());
+            l--;
         }
-        
     }
     GI(lineFree, !(*lineFree)->isValid() || !(*lineFree)->isLocked());
 
