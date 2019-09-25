@@ -490,14 +490,18 @@ void SMPCache::doRead(MemRequest *mreq)
          }
          else
          {
-             limited_address_space.erase(std::find(limited_address_space.begin(),limited_address_space.end(),tag));
+            //  PAddr temp = std::find(limited_address_space.begin(),limited_address_space.end(),tag);
+            //  limited_address_space.erase(temp);
+                         std::vector<PAddr>::iterator pos =std::find(limited_address_space.begin(),limited_address_space.end(),tag);
+                         if(pos != limited_address_space.end())
+                            limited_address_space.erase(pos);
+
          }
          limited_address_space.push_back(tag);
          
      }   
     }
-    if (cap_flag && comp_flag)
-    {
+    if (!cap_flag && !comp_flag){
         confMiss.inc();
     }
 cap_flag = false;
@@ -631,14 +635,18 @@ void SMPCache::doWrite(MemRequest *mreq)
          }
          else
          {
-             limited_address_space.erase(std::find(limited_address_space.begin(),limited_address_space.end(),tag));
+            //  PAddr temp = std::find(limited_address_space.begin(),limited_address_space.end(),tag);
+            //  limited_address_space.erase(temp);
+                         std::vector<PAddr>::iterator pos =std::find(limited_address_space.begin(),limited_address_space.end(),tag);
+                         if(pos != limited_address_space.end())
+                            limited_address_space.erase(pos);
+
          }
          limited_address_space.push_back(tag);
          
      }   
     }
-    if (cap_flag && comp_flag)
-    {
+    if (!cap_flag && !comp_flag){
         confMiss.inc();
     }
 cap_flag = false;
