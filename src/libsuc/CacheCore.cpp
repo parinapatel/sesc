@@ -355,6 +355,8 @@ typename CacheAssoc<State, Addr_t, Energy>::Line
             GI(!(*l)->isValid(), !(*l)->isLocked());
             l--;
         }
+        if ((policy == NXLRU) && count == 1 && lineFree == 0)
+            lineFree = buf;
     }
     GI(lineFree, !(*lineFree)->isValid() || !(*lineFree)->isLocked());
 
