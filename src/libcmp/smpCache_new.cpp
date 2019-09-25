@@ -29,10 +29,11 @@ Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "SMPSliceCache.h"
 
 #include "SMPRouter.h"
+#include "vector"  //changed
+#include <algorithm>
 
 #include <iomanip>
-#include "vector"
-#include <algorithm>
+
 #if (defined DEBUG_LEAK)
 Time_t Directory::lastClock = 0;
 uint64_t Directory::totCnt = 0;
@@ -54,6 +55,9 @@ extern char* MemOperationStr[];
 SMPMemRequest::MESHSTRMAP SMPMemRequest::SMPMemReqStrMap;
 
 const char* SMPCache::cohOutfile = NULL;
+
+//a global variable for storing section pointer
+const char *tmpsection;
 	
 // This cache works under the assumption that caches above it in the memory
 // hierarchy are write-through caches
@@ -80,13 +84,16 @@ const char* SMPCache::cohOutfile = NULL;
 #ifdef SESC_ENERGY
 unsigned SMPCache::cacheID = 0;
 #endif
-const char* current_section ;
+
 SMPCache::SMPCache(SMemorySystem *dms, const char *section, const char *name)
     : MemObj(section, name)
     , readHit("%s:readHit", name)
     , writeHit("%s:writeHit", name)
     , readMiss("%s:readMiss", name)
     , writeMiss("%s:writeMiss", name)
+    , compMiss("%s:compMiss", name)
+    , capMiss("%s:capMiss", name)
+    , confMiss("%s:confMiss", name)
     , readHalfMiss("%s:readHalfMiss", name)
     , writeHalfMiss("%s:writeHalfMiss", name)
     , writeBack("%s:writeBack", name)
@@ -96,15 +103,13 @@ SMPCache::SMPCache(SMemorySystem *dms, const char *section, const char *name)
     , writeRetry("%s:writeRetry", name)
     , invalDirty("%s:invalDirty", name)
     , allocDirty("%s:allocDirty", name)
-    , compMiss("%s:compMiss", name)
-    , capMiss("%s:capMiss", name)
-    , confMiss("%s:confMiss", name)
-
 {
+ 
+  tmpsection = section; // copying the section variable
+
     MemObj *lowerLevel = NULL;
     //printf("%d\n", dms->getPID());
-    //Sets global varible to get information about current section in other functions.
-    current_section = section;
+
     I(dms);
     lowerLevel = dms->declareMemoryObj(section, "lowerLevel");
 
@@ -437,8 +442,8 @@ void SMPCache::read(MemRequest *mreq)
 
 void SMPCache::doRead(MemRequest *mreq)
 {
-    bool cap_flag = false , comp_flag = false;
-    PAddr addr = mreq->getPAddr();
+ int flag1=0, flag2 =0;
+   PAddr addr = mreq->getPAddr();
     Line *l = cache->readLine(addr);
 
     if(!((l && l->canBeRead()))) {
@@ -472,37 +477,35 @@ void SMPCache::doRead(MemRequest *mreq)
     GI(l, !l->isLocked());
 
     readMiss.inc();
-    PAddr tag = calcTag(addr);
-    if (std::find(address_space.begin(), address_space.end(),tag) == address_space.end())
-    {
-        compMiss.inc();
-        comp_flag = true;
-        address_space.push_back(tag);
-    }
-    else
-    {
-     if ( std::find(limited_address_space.begin(),limited_address_space.end(),tag) == limited_address_space.end() ){
-         capMiss.inc();
-         cap_flag = true;
-         if ( limited_address_space.size() == SescConf->getInt(current_section,"size"))
-         {
-            limited_address_space.erase(limited_address_space.begin());
-         }
-         else
-         {
-             limited_address_space.erase(std::find(limited_address_space.begin(),limited_address_space.end(),tag));
-         }
-         limited_address_space.push_back(tag);
-         
-     }   
-    }
-    if (cap_flag && comp_flag)
-    {
-        confMiss.inc();
-    }
-cap_flag = false;
-comp_flag = false;
-    
+
+PAddr tag = calcTag(addr);
+
+if (std::find(db.begin(), db.end(), tag) == db.end()) {
+compMiss.inc();
+flag1 = 1;
+db.push_back(tag);
+} else {
+	if (std::find(capdb.begin(), capdb.end(), tag) == capdb.end()) { // step 1	//for checking capacity misses
+		capMiss.inc();
+		flag2 = 1;		
+		if (capdb.size() ==  SescConf->getInt(tmpsection, "size")) {	
+			capdb.erase(capdb.begin());
+		} 
+	} else {
+			capdb.erase(std::find(capdb.begin(),capdb.end(),tag));
+		}
+
+capdb.push_back(tag); // step 2
+}
+
+if (flag1 == 0 && flag2 == 0) // conflict misses
+confMiss.inc();
+
+
+flag1 = 0;
+flag2 = 0;
+
+
 #if (defined TRACK_MPKI)
     DInst *dinst = mreq->getDInst();
     if(dinst) {
@@ -569,9 +572,10 @@ void SMPCache::doWriteAgain(MemRequest *mreq) {
 
 void SMPCache::doWrite(MemRequest *mreq)
 {
+	int flag1=0,flag2=0;
     PAddr addr = mreq->getPAddr();
     Line *l = cache->writeLine(addr);
-    bool comp_flag = false , cap_flag = false;
+
     if(!(l && l->canBeWritten())) {
         DEBUGPRINT("[%s] write %x (%x) miss at %lld [state %x]\n",
                    getSymbolicName(), addr, calcTag(addr), globalClock, (l?l->getState():-1) );
@@ -613,37 +617,33 @@ void SMPCache::doWrite(MemRequest *mreq)
     }
 
     writeMiss.inc();
-    PAddr tag = calcTag(addr);
-    if (std::find(address_space.begin(), address_space.end(),tag) == address_space.end())
-    {
-        compMiss.inc();
-        comp_flag = true;
-        address_space.push_back(tag);
-    }
-    else
-    {
-     if ( std::find(limited_address_space.begin(),limited_address_space.end(),tag) == limited_address_space.end() ){
-         capMiss.inc();
-         cap_flag = true;
-         if ( limited_address_space.size() == SescConf->getInt(current_section,"size"))
-         {
-            limited_address_space.erase(limited_address_space.begin());
-         }
-         else
-         {
-             limited_address_space.erase(std::find(limited_address_space.begin(),limited_address_space.end(),tag));
-         }
-         limited_address_space.push_back(tag);
-         
-     }   
-    }
-    if (cap_flag && comp_flag)
-    {
-        confMiss.inc();
-    }
-cap_flag = false;
-comp_flag = false;
-    
+
+PAddr tag = calcTag(addr);
+
+if (std::find(db.begin(), db.end(), tag) == db.end()) {
+compMiss.inc();
+flag1=1;
+db.push_back(tag);
+} else {
+	if (std::find(capdb.begin(), capdb.end(), tag) == capdb.end()) { // step 1	//for checking capacity misses
+		capMiss.inc();
+		flag2=1;				
+		if (capdb.size() == SescConf->getInt(tmpsection, "size")) {
+			capdb.erase(capdb.begin());
+		} 
+	} else {
+			capdb.erase(std::find(capdb.begin(),capdb.end(),tag));
+		}
+
+capdb.push_back(tag); // step 2
+}
+
+if (flag1==0 && flag2==0) // conflict misses
+confMiss.inc();
+
+flag1=0;
+flag2=0;
+
 #ifdef SESC_ENERGY
     wrEnergy[1]->inc();
 #endif

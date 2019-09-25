@@ -97,6 +97,9 @@ protected:
 
     GStatsCntr invalDirty;
     GStatsCntr allocDirty;
+    GStatsCntr compMiss;
+    GStatsCntr capMiss;
+    GStatsCntr confMiss;
 
 #ifdef SESC_ENERGY
     static unsigned cacheID;
@@ -165,6 +168,10 @@ public:
     ~SMPCache();
 
 	static void PrintStat();
+
+    // define Vector to hold All Address & Current Addresses
+    std::vector<PAddr> address_space;
+    std::vector<PAddr> limited_address_space;
 
 #if (defined SIGDEBUG)
     void pStat();
