@@ -19,3 +19,8 @@ core.*
 # switch to regexp syntax.
 #syntax: regexp
 #^\.pc/
+*.out
+*.err
+*.opt
+*.mispseb
+*.log
