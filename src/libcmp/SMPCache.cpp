@@ -104,7 +104,11 @@ SMPCache::SMPCache(SMemorySystem *dms, const char *section, const char *name)
     MemObj *lowerLevel = NULL;
     //printf("%d\n", dms->getPID());
     //Sets global varible to get information about current section in other functions.
-    current_section = section;
+    if (strcmp(SescConf->getCharPtr(section,"name"),"smpcache") == 0)
+    {
+        current_section = section;
+    }
+    
     I(dms);
     lowerLevel = dms->declareMemoryObj(section, "lowerLevel");
 
@@ -473,22 +477,26 @@ void SMPCache::doRead(MemRequest *mreq)
 
     readMiss.inc();
     PAddr tag = calcTag(addr);
+
     if (std::find(address_space.begin(), address_space.end(), tag) == address_space.end())
     {
+        comp_flag = true;
         compMiss.inc();
         address_space.push_back(tag);
+        if (limited_address_space.size() < 512)
+            limited_address_space.push_back(tag);
     }
     else
     {
-        if (address_space.size() >= 512)
+        if (std::find(limited_address_space.begin() , limited_address_space.end(),tag) != limited_address_space.end())
         {
             capMiss.inc();
-        }
-        else
-        {
-            confMiss.inc();
+            cap_flag = true;
         }
     }
+if (!cap_flag && !comp_flag){
+    confMiss.inc();
+}
 
 #if (defined TRACK_MPKI)
     DInst *dinst = mreq->getDInst();
@@ -601,23 +609,26 @@ void SMPCache::doWrite(MemRequest *mreq)
 
     writeMiss.inc();
     PAddr tag = calcTag(addr);
+
     if (std::find(address_space.begin(), address_space.end(), tag) == address_space.end())
     {
+        comp_flag = true;
         compMiss.inc();
         address_space.push_back(tag);
+        if (limited_address_space.size() < 512)
+            limited_address_space.push_back(tag);
     }
     else
     {
-        if (address_space.size() >= 512)
+        if (std::find(limited_address_space.begin() , limited_address_space.end(),tag) != limited_address_space.end())
         {
             capMiss.inc();
-        }
-        else
-        {
-            confMiss.inc();
+            cap_flag = true;
         }
     }
-    
+if (!cap_flag && !comp_flag){
+    confMiss.inc();
+}
 #ifdef SESC_ENERGY
     wrEnergy[1]->inc();
 #endif
