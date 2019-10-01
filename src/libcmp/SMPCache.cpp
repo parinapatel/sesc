@@ -104,7 +104,7 @@ SMPCache::SMPCache(SMemorySystem *dms, const char *section, const char *name)
     MemObj *lowerLevel = NULL;
     //printf("%d\n", dms->getPID());
     //Sets global varible to get information about current section in other functions.
-    if (strcmp(SescConf->getCharPtr(section,"name"),"smpcache") == 0)
+    if (strcmp(SescConf->getCharPtr(section,"deviceType"),"smpcache") == 0)
     {
         current_section = section;
     }
@@ -483,19 +483,20 @@ void SMPCache::doRead(MemRequest *mreq)
         comp_flag = true;
         compMiss.inc();
         address_space.push_back(tag);
-        if (limited_address_space.size() < 512)
+        if (limited_address_space.size() <= 512){
+            // std::cout<< limited_address_space.size() << std::endl;
             limited_address_space.push_back(tag);
-    }
+}    }
     else
     {
         if (std::find(limited_address_space.begin() , limited_address_space.end(),tag) != limited_address_space.end())
         {
-            capMiss.inc();
+            confMiss.inc();
             cap_flag = true;
         }
     }
 if (!cap_flag && !comp_flag){
-    confMiss.inc();
+    capMiss.inc();
 }
 
 #if (defined TRACK_MPKI)
@@ -615,20 +616,22 @@ void SMPCache::doWrite(MemRequest *mreq)
         comp_flag = true;
         compMiss.inc();
         address_space.push_back(tag);
-        if (limited_address_space.size() < 512)
+        if (limited_address_space.size() <= 512){
             limited_address_space.push_back(tag);
+}else             std::cout<< tag <<"," <<  addr << std::endl;
     }
     else
     {
         if (std::find(limited_address_space.begin() , limited_address_space.end(),tag) != limited_address_space.end())
         {
-            capMiss.inc();
+            confMiss.inc();
             cap_flag = true;
         }
     }
 if (!cap_flag && !comp_flag){
-    confMiss.inc();
+    capMiss.inc();
 }
+
 #ifdef SESC_ENERGY
     wrEnergy[1]->inc();
 #endif
