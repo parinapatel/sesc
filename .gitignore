@@ -3,6 +3,11 @@
 *.mispeb
 *.pyc
 *DS_Store*
+*.out
+*.err
+*.opt
+*.mispseb
+*.log
 # use glob syntax.
 syntax: glob
 
@@ -19,8 +24,3 @@ core.*
 # switch to regexp syntax.
 #syntax: regexp
 #^\.pc/
-*.out
-*.err
-*.opt
-*.mispseb
-*.log

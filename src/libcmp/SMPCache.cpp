@@ -473,40 +473,23 @@ void SMPCache::doRead(MemRequest *mreq)
 
     readMiss.inc();
     PAddr tag = calcTag(addr);
-    if (std::find(address_space.begin(), address_space.end(),tag) == address_space.end())
+    if (std::find(address_space.begin(), address_space.end(), tag) == address_space.end())
     {
         compMiss.inc();
-        comp_flag = true;
         address_space.push_back(tag);
     }
     else
     {
-     if ( std::find(limited_address_space.begin(),limited_address_space.end(),tag) == limited_address_space.end() ){
-         capMiss.inc();
-         cap_flag = true;
-         if ( limited_address_space.size() == SescConf->getInt(current_section,"size"))
-         {
-            limited_address_space.erase(limited_address_space.begin());
-         }
-         else
-         {
-            //  PAddr temp = std::find(limited_address_space.begin(),limited_address_space.end(),tag);
-            //  limited_address_space.erase(temp);
-                         std::vector<PAddr>::iterator pos =std::find(limited_address_space.begin(),limited_address_space.end(),tag);
-                         if(pos != limited_address_space.end())
-                            limited_address_space.erase(pos);
+        if (address_space.size() >= 512)
+        {
+            capMiss.inc();
+        }
+        else
+        {
+            confMiss.inc();
+        }
+    }
 
-         }
-         limited_address_space.push_back(tag);
-         
-     }   
-    }
-    if (!cap_flag && !comp_flag){
-        confMiss.inc();
-    }
-cap_flag = false;
-comp_flag = false;
-    
 #if (defined TRACK_MPKI)
     DInst *dinst = mreq->getDInst();
     if(dinst) {
@@ -618,39 +601,22 @@ void SMPCache::doWrite(MemRequest *mreq)
 
     writeMiss.inc();
     PAddr tag = calcTag(addr);
-    if (std::find(address_space.begin(), address_space.end(),tag) == address_space.end())
+    if (std::find(address_space.begin(), address_space.end(), tag) == address_space.end())
     {
         compMiss.inc();
-        comp_flag = true;
         address_space.push_back(tag);
     }
     else
     {
-     if ( std::find(limited_address_space.begin(),limited_address_space.end(),tag) == limited_address_space.end() ){
-         capMiss.inc();
-         cap_flag = true;
-         if ( limited_address_space.size() == SescConf->getInt(current_section,"size"))
-         {
-            limited_address_space.erase(limited_address_space.begin());
-         }
-         else
-         {
-            //  PAddr temp = std::find(limited_address_space.begin(),limited_address_space.end(),tag);
-            //  limited_address_space.erase(temp);
-                         std::vector<PAddr>::iterator pos =std::find(limited_address_space.begin(),limited_address_space.end(),tag);
-                         if(pos != limited_address_space.end())
-                            limited_address_space.erase(pos);
-
-         }
-         limited_address_space.push_back(tag);
-         
-     }   
+        if (address_space.size() >= 512)
+        {
+            capMiss.inc();
+        }
+        else
+        {
+            confMiss.inc();
+        }
     }
-    if (!cap_flag && !comp_flag){
-        confMiss.inc();
-    }
-cap_flag = false;
-comp_flag = false;
     
 #ifdef SESC_ENERGY
     wrEnergy[1]->inc();
