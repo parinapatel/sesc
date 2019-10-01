@@ -170,8 +170,8 @@ public:
 	static void PrintStat();
 
     // define Vector to hold All Address & Current Addresses
-    std::vector<PAddr> address_space;
-    std::vector<PAddr> limited_address_space;
+    std::vector<PAddr> db;
+    std::vector<PAddr> capdb;
 
 #if (defined SIGDEBUG)
     void pStat();
