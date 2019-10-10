@@ -444,7 +444,10 @@ void SMPCache::read(MemRequest *mreq)
 
 void SMPCache::doRead(MemRequest *mreq)
 {
- int flag1=0, flag2 =0;
+   int flag1=0, flag2 =0;
+   int cache_size, assoc ;
+   cache_size = SescConf->getInt(tmpsection,"size") / SescConf->getInt(tmpsection,"bsize");
+   assoc =  SescConf->getInt(tmpsection,"assoc");
    PAddr addr = mreq->getPAddr();
     Line *l = cache->readLine(addr);
 
@@ -481,22 +484,40 @@ void SMPCache::doRead(MemRequest *mreq)
     readMiss.inc();
 
 PAddr tag = calcTag(addr);
-
+PAddr cache_location;
+cache_location = tag % (cache_size / assoc);
 if (std::find(db.begin(), db.end(), tag) == db.end()) {
 compMiss.inc();
 flag1 = 1;
+if ( locationdb.find(cache_location) != locationdb.end() )
+{
+    PAddr temp[5];
+    temp = locationdb[cache_location];
+    if ( temp[4] < assoc ) {
+        temp[temp[4]] = tag; 
+        temp[4]++; 
+    }
+}else
+{
+        PAddr[5] temp;
+temp = {tag,0,0,0,0};
+    locationdb.insert(std::pair<PAddr, PAddr* [5]>(cache_location,&temp));
+}
+
 db.push_back(tag);
 } else {
-    if( std::find(capdb.begin(),capdb.end(),tag) != capdb.end() ){ 
-        flag2 = 1 ;
-        confMiss.inc();
-        }
-    else if( capdb.size() <= 512){
-        capdb.push_back(tag);
-        flag2 = 1 ;
-        confMiss.inc();
-    }
     
+    if ( locationdb.find(cache_location) != locationdb.end() ){
+            PAddr[5] temp;
+temp = locationdb[cache_location];
+        for(int i =0 ; i < assoc ; i++){
+            if (temp[i] == tag ) {
+                confMiss.inc();
+                flag2 = 1;
+            }
+        }
+    }
+
 }
 
 if (flag1 == 0 && flag2 == 0) // conflict misses
@@ -571,8 +592,10 @@ void SMPCache::doWriteAgain(MemRequest *mreq) {
 
 void SMPCache::doWrite(MemRequest *mreq)
 {
-	int flag1=0,flag2=0;
-    PAddr addr = mreq->getPAddr();
+   int flag1=0, flag2 =0;
+   int cache_size, assoc ;
+   cache_size = SescConf->getInt(tmpsection,"size") / SescConf->getInt(tmpsection,"bsize");
+   assoc =  SescConf->getInt(tmpsection,"assoc");    PAddr addr = mreq->getPAddr();
     Line *l = cache->writeLine(addr);
 
     if(!(l && l->canBeWritten())) {
@@ -619,25 +642,38 @@ void SMPCache::doWrite(MemRequest *mreq)
 
 PAddr tag = calcTag(addr);
 
+PAddr cache_location;
+cache_location = tag % (cache_size / assoc);
 if (std::find(db.begin(), db.end(), tag) == db.end()) {
 compMiss.inc();
 flag1 = 1;
+if ( locationdb.find(cache_location) != locationdb.end() )
+{
+    if ( locationdb[cache_location][4] < assoc ) {
+        locationdb[cache_location][locationdb[cache_location][4]] = tag; 
+        locationdb[cache_location][4]++; 
+    }
+}else
+{
+    locationdb.insert(std::pair<PAddr, PAddr* [5]>(cache_location,{tag,0,0,0,0}))
+}
+
 db.push_back(tag);
 } else {
-    if( std::find(capdb.begin(),capdb.end(),tag) != capdb.end() ){ 
-        flag2 = 1 ;
-        confMiss.inc();
+    if ( locationdb.find(cache_location) != locationdb.end() ){
+        for(int i =0 ; i < assoc ; i++){
+            if (locationdb[cache_location][i] == tag ) {
+                confMiss.inc();
+                flag2 = 1;
+            }
         }
-    else if( capdb.size() <= 512){
-        capdb.push_back(tag);
-        flag2 = 1 ;
-        confMiss.inc();
     }
-    
+
 }
 
 if (flag1 == 0 && flag2 == 0) // conflict misses
 capMiss.inc();
+
 
 flag1=0;
 flag2=0;

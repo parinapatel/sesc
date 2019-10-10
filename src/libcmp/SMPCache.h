@@ -39,6 +39,7 @@ Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "estl.h"
 #include <map>
 
+
 class SMPCache : public MemObj {
 public:
     typedef CacheGeneric<SMPCacheState, PAddr, false>            CacheType;
@@ -172,7 +173,7 @@ public:
     // define Vector to hold All Address & Current Addresses
     std::vector<PAddr> db;
     std::vector<PAddr> capdb;
-
+    std::map<PAddr, PAddr* [5]> locationdb;
 #if (defined SIGDEBUG)
     void pStat();
 
