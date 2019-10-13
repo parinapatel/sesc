@@ -173,7 +173,8 @@ public:
     // define Vector to hold All Address & Current Addresses
     std::vector<PAddr> db;
     std::vector<PAddr> capdb;
-    std::map<PAddr, PAddr* [5]> locationdb;
+    // std::map<PAddr, PAddr* [5]> locationdb;
+    PAddr cachedb[2048];
 #if (defined SIGDEBUG)
     void pStat();
 

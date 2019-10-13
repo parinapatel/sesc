@@ -484,40 +484,55 @@ void SMPCache::doRead(MemRequest *mreq)
     readMiss.inc();
 
 PAddr tag = calcTag(addr);
+
 PAddr cache_location;
 cache_location = tag % (cache_size / assoc);
 if (std::find(db.begin(), db.end(), tag) == db.end()) {
 compMiss.inc();
 flag1 = 1;
-if ( locationdb.find(cache_location) != locationdb.end() )
-{
-    PAddr temp[5];
-    temp = locationdb[cache_location];
-    if ( temp[4] < assoc ) {
-        temp[temp[4]] = tag; 
-        temp[4]++; 
-    }
-}else
-{
-        PAddr[5] temp;
-temp = {tag,0,0,0,0};
-    locationdb.insert(std::pair<PAddr, PAddr* [5]>(cache_location,&temp));
-}
-
-db.push_back(tag);
-} else {
+// if ( cachedb[cache_location*assoc] != 0  )
+// {
+// for (int i = 0; i < assoc; i++)
+// {
+//     if (cachedb[cache_location*assoc + i ] != 0)
+//     {
+//         cachedb[cache_location*assoc + i ] = tag;
+//     }
     
-    if ( locationdb.find(cache_location) != locationdb.end() ){
-            PAddr[5] temp;
-temp = locationdb[cache_location];
-        for(int i =0 ; i < assoc ; i++){
-            if (temp[i] == tag ) {
-                confMiss.inc();
-                flag2 = 1;
-            }
+// }
+
+// }
+// else
+// {
+//  cachedb[cache_location*assoc ] = tag;
+// }
+db.push_back(tag);
+std::cout << "capdb size: " << capdb.size() << std::endl;
+if (capdb.size() == cache_size){
+    // capdb.erase(capdb.begin()) ;
+    // capdb.push_back(tag);
+    std::cout << "I go here" << std::endl;
+
+}
+else capdb.push_back(tag);
+
+
+} else {
+    if ( std::find(capdb.begin(),capdb.end(),tag) != capdb.end())
+    {
+        capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
+        flag2 = 1;
+        confMiss.inc();
+    }
+    else {
+        if (capdb.size() == cache_size)
+        {
+            capdb.erase(capdb.begin());
         }
+        
     }
 
+  capdb.push_back(tag);
 }
 
 if (flag1 == 0 && flag2 == 0) // conflict misses
@@ -647,28 +662,47 @@ cache_location = tag % (cache_size / assoc);
 if (std::find(db.begin(), db.end(), tag) == db.end()) {
 compMiss.inc();
 flag1 = 1;
-if ( locationdb.find(cache_location) != locationdb.end() )
-{
-    if ( locationdb[cache_location][4] < assoc ) {
-        locationdb[cache_location][locationdb[cache_location][4]] = tag; 
-        locationdb[cache_location][4]++; 
-    }
-}else
-{
-    locationdb.insert(std::pair<PAddr, PAddr* [5]>(cache_location,{tag,0,0,0,0}))
-}
+// if ( cachedb[cache_location*assoc] != 0  )
+// {
+// for (int i = 0; i < assoc; i++)
+// {
+//     if (cachedb[cache_location*assoc + i ] != 0)
+//     {
+//         cachedb[cache_location*assoc + i ] = tag;
+//     }
+    
+// }
 
+// }
+// else
+// {
+//  cachedb[cache_location*assoc ] = tag;
+// }
 db.push_back(tag);
+if (capdb.size() == cache_size){
+    // capdb.erase(capdb.begin()) ;
+    // capdb.push_back(tag);
+    std::cout << "I go here" << std::endl;
+}
+else capdb.push_back(tag);
+
+
 } else {
-    if ( locationdb.find(cache_location) != locationdb.end() ){
-        for(int i =0 ; i < assoc ; i++){
-            if (locationdb[cache_location][i] == tag ) {
-                confMiss.inc();
-                flag2 = 1;
-            }
+    if ( std::find(capdb.begin(),capdb.end(),tag) != capdb.end())
+    {
+        capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
+        flag2 = 1;
+        confMiss.inc();
+    }
+    else {
+        if (capdb.size() == cache_size)
+        {
+            capdb.erase(capdb.begin());
         }
+        
     }
 
+  capdb.push_back(tag);
 }
 
 if (flag1 == 0 && flag2 == 0) // conflict misses
