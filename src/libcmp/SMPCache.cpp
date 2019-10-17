@@ -107,7 +107,7 @@ SMPCache::SMPCache(SMemorySystem *dms, const char *section, const char *name)
  
     if (strcmp(SescConf->getCharPtr(section,"deviceType"), "smpcache") == 0)
     {
-        tmpsection = section;
+        current_section = section;
     }
     MemObj *lowerLevel = NULL;
     //printf("%d\n", dms->getPID());
@@ -430,17 +430,11 @@ void SMPCache::read(MemRequest *mreq)
     //
     //
     //
-    PAddr tag = calcTag(addr);
 
     if (!outsReq->issue(addr)) {
         // DEBUGPRINT("[%s] read half miss %x at %lld\n",getSymbolicName(), addr,  globalClock );
         outsReq->addEntry(addr, doReadCB::create(this, mreq),
                           doReadCB::create(this, mreq));
-                 if ( std::find(capdb.begin(),capdb.end(),tag) != capdb.end())
-            {
-                capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
-                capdb.push_back(tag);
-            }
         readHalfMiss.inc();
         return;
     }
@@ -450,14 +444,9 @@ void SMPCache::read(MemRequest *mreq)
 
 void SMPCache::doRead(MemRequest *mreq)
 {
-   int flag1=0, flag2 =0;
-   int cache_size, assoc ;
-   cache_size = SescConf->getInt(tmpsection,"size") / SescConf->getInt(tmpsection,"bsize");
-   assoc =  SescConf->getInt(tmpsection,"assoc");
+ int flag1=0, flag2 =0;
    PAddr addr = mreq->getPAddr();
     Line *l = cache->readLine(addr);
-
-    PAddr tag = calcTag(addr);
 
     if(!((l && l->canBeRead()))) {
         DEBUGPRINT("[%s] read %x miss at %lld\n",getSymbolicName(), addr,  globalClock );
@@ -469,11 +458,6 @@ void SMPCache::doRead(MemRequest *mreq)
 
     if (l && l->canBeRead()) {
         readHit.inc();
-         if ( std::find(capdb.begin(),capdb.end(),tag) != capdb.end())
-            {
-                capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
-                capdb.push_back(tag);
-            }
 #ifdef SESC_ENERGY
         rdEnergy[0]->inc();
 #endif
@@ -496,39 +480,33 @@ void SMPCache::doRead(MemRequest *mreq)
 
     readMiss.inc();
 
+PAddr tag = calcTag(addr);
+
 if (std::find(db.begin(), db.end(), tag) == db.end()) {
 compMiss.inc();
 flag1 = 1;
 db.push_back(tag);
-if (capdb.size() == cache_size){
-    capdb.erase(capdb.begin()) ;
-    capdb.push_back(tag);
-
-}
-else capdb.push_back(tag);
-
-
 } else {
-    if ( std::find(capdb.begin(),capdb.end(),tag) == capdb.end()) {
-        capdb.erase(capdb.begin());        
-        capdb.push_back(tag);
-        flag2 = 1;
-        capMiss.inc();
-    } else
-    {
-        capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
-        capdb.push_back(tag);
-        confMiss.inc();
-    }
-    
+	if (std::find(capdb.begin(), capdb.end(), tag) == capdb.end()) { // step 1	//for checking capacity misses
+		capMiss.inc();
+		flag2 = 1;		
+		if (capdb.size() ==  SescConf->getInt(tmpsection, "size")) {	
+			capdb.erase(capdb.begin());
+		} 
+	} else {
+			capdb.erase(std::find(capdb.begin(),capdb.end(),tag));
+		}
 
+capdb.push_back(tag); // step 2
 }
 
-// if (flag1 == 0 && flag2 == 0) // conflict misses
-// capMiss.inc();
+if (flag1 == 0 && flag2 == 0) // conflict misses
+confMiss.inc();
 
-flag1=0;
-flag2=0;
+
+flag1 = 0;
+flag2 = 0;
+
 
 #if (defined TRACK_MPKI)
     DInst *dinst = mreq->getDInst();
@@ -565,16 +543,10 @@ void SMPCache::sendRead(MemRequest* mreq)
 void SMPCache::write(MemRequest *mreq)
 {
     PAddr addr = mreq->getPAddr();
-    PAddr tag = calcTag(addr);
 
     if (!outsReq->issue(addr)) {
         outsReq->addEntry(addr, doWriteCB::create(this, mreq),
                           doWriteCB::create(this, mreq));
-                                   if ( std::find(capdb.begin(),capdb.end(),tag) != capdb.end())
-            {
-                capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
-                capdb.push_back(tag);
-            }
         writeHalfMiss.inc();
         return;
     }
@@ -584,17 +556,10 @@ void SMPCache::write(MemRequest *mreq)
 
 void SMPCache::doWriteAgain(MemRequest *mreq) {
     PAddr addr = mreq->getPAddr();
-        PAddr tag = calcTag(addr);
-
     Line *l = cache->writeLine(addr);
     IJ(l && l->canBeWritten());
     if(l && l->canBeWritten()) {
         writeHit.inc();
-                 if ( std::find(capdb.begin(),capdb.end(),tag) != capdb.end())
-            {
-                capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
-                capdb.push_back(tag);
-            }
 #ifdef SESC_ENERGY
         wrEnergy[0]->inc();
 #endif
@@ -609,12 +574,9 @@ void SMPCache::doWriteAgain(MemRequest *mreq) {
 
 void SMPCache::doWrite(MemRequest *mreq)
 {
-   int flag1=0, flag2 =0;
-   int cache_size, assoc ;
-   cache_size = SescConf->getInt(tmpsection,"size") / SescConf->getInt(tmpsection,"bsize");
-   assoc =  SescConf->getInt(tmpsection,"assoc");    PAddr addr = mreq->getPAddr();
+	int flag1=0,flag2=0;
+    PAddr addr = mreq->getPAddr();
     Line *l = cache->writeLine(addr);
-    PAddr tag = calcTag(addr);
 
     if(!(l && l->canBeWritten())) {
         DEBUGPRINT("[%s] write %x (%x) miss at %lld [state %x]\n",
@@ -623,11 +585,6 @@ void SMPCache::doWrite(MemRequest *mreq)
 
     if (l && l->canBeWritten()) {
         writeHit.inc();
-        if ( std::find(capdb.begin(),capdb.end(),tag) != capdb.end())
-            {
-                capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
-                capdb.push_back(tag);
-            }
 #ifdef SESC_ENERGY
         wrEnergy[0]->inc();
 #endif
@@ -663,36 +620,28 @@ void SMPCache::doWrite(MemRequest *mreq)
 
     writeMiss.inc();
 
+PAddr tag = calcTag(addr);
 
 if (std::find(db.begin(), db.end(), tag) == db.end()) {
 compMiss.inc();
-flag1 = 1;
+flag1=1;
 db.push_back(tag);
-if (capdb.size() == cache_size){
-    capdb.erase(capdb.begin()) ;
-    capdb.push_back(tag);
-
-}
-else capdb.push_back(tag);
-
-
 } else {
-    if ( std::find(capdb.begin(),capdb.end(),tag) == capdb.end()) {
-        capdb.erase(capdb.begin());        capdb.push_back(tag);
-        flag2 = 1;
-        capMiss.inc();
-    } else
-    {
-        capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
-        capdb.push_back(tag);
-        confMiss.inc();
-    }
-    
+	if (std::find(capdb.begin(), capdb.end(), tag) == capdb.end()) { // step 1	//for checking capacity misses
+		capMiss.inc();
+		flag2=1;				
+		if (capdb.size() == SescConf->getInt(tmpsection, "size")) {
+			capdb.erase(capdb.begin());
+		} 
+	} else {
+			capdb.erase(std::find(capdb.begin(),capdb.end(),tag));
+		}
 
+capdb.push_back(tag); // step 2
 }
 
-// if (flag1 == 0 && flag2 == 0) // conflict misses
-// capMiss.inc();
+if (flag1==0 && flag2==0) // conflict misses
+confMiss.inc();
 
 flag1=0;
 flag2=0;

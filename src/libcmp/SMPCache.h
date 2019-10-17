@@ -39,11 +39,11 @@ Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "estl.h"
 #include <map>
 
-
 class SMPCache : public MemObj {
 public:
     typedef CacheGeneric<SMPCacheState, PAddr, false>            CacheType;
     typedef CacheGeneric<SMPCacheState, PAddr, false>::CacheLine Line;
+    void  calculateMissMetrics(PAddr tag);
 
 private:
 	static const char *cohOutfile;
@@ -95,12 +95,12 @@ protected:
     GStatsCntr lineFill;
     GStatsCntr readRetry;
     GStatsCntr writeRetry;
+    GStatsCntr compMiss; //*DTN: occurs in infinite-sized cache
+    GStatsCntr capMiss; //*DTN: occurs in fully assoc LRU cache that has same block size and capacity
+    GStatsCntr confMiss; //*DTN: neither compulsory or capacity miss
 
     GStatsCntr invalDirty;
     GStatsCntr allocDirty;
-    GStatsCntr compMiss;
-    GStatsCntr capMiss;
-    GStatsCntr confMiss;
 
 #ifdef SESC_ENERGY
     static unsigned cacheID;
@@ -170,11 +170,6 @@ public:
 
 	static void PrintStat();
 
-    // define Vector to hold All Address & Current Addresses
-    std::vector<PAddr> db;
-    std::vector<PAddr> capdb;
-    // std::map<PAddr, PAddr* [5]> locationdb;
-    PAddr cachedb[2048];
 #if (defined SIGDEBUG)
     void pStat();
 
@@ -212,7 +207,7 @@ public:
 	std::map<PAddr, Time_t> replyReadyTime;
     HASH_MAP<PAddr, CallbackBase* > pendRemoteRead;
 
-
+ std::vector<PAddr> LRU_order; 
     //void updateDirectory(SMPMemRequest *sreq);
     //void sendUpdateDirectory(SMPMemRequest *sreq);
     //typedef CallbackMember1<SMPCache, SMPMemRequest *,
@@ -273,6 +268,11 @@ public:
     PAddr calcTag(PAddr addr) {
         return cache->calcTag(addr);
     }
+
+    uint32_t calcSet4Addr(PAddr addr) {
+	    return cache->calcSet4Addr(addr);
+    }
+
 
     // END protocol interface
 
