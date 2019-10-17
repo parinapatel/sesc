@@ -509,16 +509,16 @@ else capdb.push_back(tag);
 
 
 } else {
-    if ( std::find(capdb.begin(),capdb.end(),tag) != capdb.end()) {
-        capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
+    if ( std::find(capdb.begin(),capdb.end(),tag) == capdb.end()) {
+        capdb.erase(capdb.begin());        
         capdb.push_back(tag);
         flag2 = 1;
-        confMiss.inc();
+        capMiss.inc();
     } else
     {
-        capdb.erase(capdb.begin());
+        capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
         capdb.push_back(tag);
-        capMiss.inc();
+        confMiss.inc();
     }
     
 
@@ -677,16 +677,15 @@ else capdb.push_back(tag);
 
 
 } else {
-    if ( std::find(capdb.begin(),capdb.end(),tag) != capdb.end()) {
-        capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
-        capdb.push_back(tag);
+    if ( std::find(capdb.begin(),capdb.end(),tag) == capdb.end()) {
+        capdb.erase(capdb.begin());        capdb.push_back(tag);
         flag2 = 1;
-        confMiss.inc();
+        capMiss.inc();
     } else
     {
-        capdb.erase(capdb.begin());
+        capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
         capdb.push_back(tag);
-        capMiss.inc();
+        confMiss.inc();
     }
     
 
