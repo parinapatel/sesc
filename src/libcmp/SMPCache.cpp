@@ -29,8 +29,6 @@ Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "SMPSliceCache.h"
 
 #include "SMPRouter.h"
-#include "vector"  //changed
-#include <algorithm>
 
 #include <iomanip>
 
@@ -55,9 +53,6 @@ extern char* MemOperationStr[];
 SMPMemRequest::MESHSTRMAP SMPMemRequest::SMPMemReqStrMap;
 
 const char* SMPCache::cohOutfile = NULL;
-
-//a global variable for storing section pointer
-const char *tmpsection;
 	
 // This cache works under the assumption that caches above it in the memory
 // hierarchy are write-through caches
@@ -85,15 +80,16 @@ const char *tmpsection;
 unsigned SMPCache::cacheID = 0;
 #endif
 
+std::vector<PAddr> compulsory; // *DTN: cold cache tracking
+//int nLines; // *DTN: number of lines defined in config
+std::map<PAddr, PAddr> cacheMap; // *DTN: track previous LRU line
+
 SMPCache::SMPCache(SMemorySystem *dms, const char *section, const char *name)
     : MemObj(section, name)
     , readHit("%s:readHit", name)
     , writeHit("%s:writeHit", name)
     , readMiss("%s:readMiss", name)
     , writeMiss("%s:writeMiss", name)
-    , compMiss("%s:compMiss", name)
-    , capMiss("%s:capMiss", name)
-    , confMiss("%s:confMiss", name)
     , readHalfMiss("%s:readHalfMiss", name)
     , writeHalfMiss("%s:writeHalfMiss", name)
     , writeBack("%s:writeBack", name)
@@ -103,12 +99,10 @@ SMPCache::SMPCache(SMemorySystem *dms, const char *section, const char *name)
     , writeRetry("%s:writeRetry", name)
     , invalDirty("%s:invalDirty", name)
     , allocDirty("%s:allocDirty", name)
+    , compMiss("%s:compMiss", name) //*DTN: compulsory miss
+    , capMiss("%s:capMiss", name) // *DTN: capacity miss
+    , confMiss("%s:confMiss", name) // *DTN: conflict miss
 {
- 
-    if (strcmp(SescConf->getCharPtr(section,"deviceType"), "smpcache") == 0)
-    {
-        tmpsection = section;
-    }
     MemObj *lowerLevel = NULL;
     //printf("%d\n", dms->getPID());
 
@@ -430,17 +424,11 @@ void SMPCache::read(MemRequest *mreq)
     //
     //
     //
-    PAddr tag = calcTag(addr);
 
     if (!outsReq->issue(addr)) {
         // DEBUGPRINT("[%s] read half miss %x at %lld\n",getSymbolicName(), addr,  globalClock );
         outsReq->addEntry(addr, doReadCB::create(this, mreq),
                           doReadCB::create(this, mreq));
-                 if ( std::find(capdb.begin(),capdb.end(),tag) != capdb.end())
-            {
-                capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
-                capdb.push_back(tag);
-            }
         readHalfMiss.inc();
         return;
     }
@@ -448,16 +436,49 @@ void SMPCache::read(MemRequest *mreq)
     doReadCB::scheduleAbs(nextSlot(), this, mreq);
 }
 
+// *DTN: helper function to count different cache miss types
+void SMPCache::calculateMissMetrics(PAddr tag)
+{
+	if (std::count(compulsory.begin(), compulsory.end(), tag) == 0)
+	{
+		compMiss.inc();
+		compulsory.push_back(tag);
+	}
+	else
+	{
+		if (cacheMap.find(tag) != cacheMap.end())
+			confMiss.inc();
+		else
+			capMiss.inc();
+	}
+
+	// Emulate an LRU cache
+	if (cacheMap.find(tag) == cacheMap.end()) // cache miss
+	{
+		// check if set is already full
+		//if (LRU_order.size() == nLines)
+		if (LRU_order.size() == cache->getNumLines())
+		{
+			// evict LRU line
+			cacheMap.erase(LRU_order.front());
+			LRU_order.erase(LRU_order.begin());
+		}
+	}
+	else // cache hit
+	{
+		// update position to be recently accessed
+		LRU_order.erase(std::find(LRU_order.begin(), LRU_order.end(), tag));
+	}
+
+	LRU_order.push_back(tag);
+	cacheMap[tag] = LRU_order.front();
+}
+
 void SMPCache::doRead(MemRequest *mreq)
 {
-   int flag1=0, flag2 =0;
-   int cache_size, assoc ;
-   cache_size = SescConf->getInt(tmpsection,"size") / SescConf->getInt(tmpsection,"bsize");
-   assoc =  SescConf->getInt(tmpsection,"assoc");
-   PAddr addr = mreq->getPAddr();
-    Line *l = cache->readLine(addr);
-
+    PAddr addr = mreq->getPAddr();
     PAddr tag = calcTag(addr);
+    Line *l = cache->readLine(addr);
 
     if(!((l && l->canBeRead()))) {
         DEBUGPRINT("[%s] read %x miss at %lld\n",getSymbolicName(), addr,  globalClock );
@@ -469,16 +490,31 @@ void SMPCache::doRead(MemRequest *mreq)
 
     if (l && l->canBeRead()) {
         readHit.inc();
-         if ( std::find(capdb.begin(),capdb.end(),tag) != capdb.end())
-            {
-                capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
-                capdb.push_back(tag);
-            }
 #ifdef SESC_ENERGY
         rdEnergy[0]->inc();
 #endif
         outsReq->retire(addr);
         mreq->goUp(hitDelay);
+	// Emulate an LRU cache
+	if (cacheMap.find(tag) == cacheMap.end()) // cache miss
+	{
+		// check if set is already full
+		//if (LRU_order.size() == nLines)
+		if (LRU_order.size() == cache->getNumLines())
+		{
+			// evict LRU line
+			cacheMap.erase(LRU_order.front());
+			LRU_order.erase(LRU_order.begin());
+		}
+	}
+	else // cache hit
+	{
+		// update position to be recently accessed
+		LRU_order.erase(std::find(LRU_order.begin(), LRU_order.end(), tag));
+	}
+
+	LRU_order.push_back(tag);
+	cacheMap[tag] = LRU_order.front();
         return;
     }
 
@@ -496,39 +532,7 @@ void SMPCache::doRead(MemRequest *mreq)
 
     readMiss.inc();
 
-if (std::find(db.begin(), db.end(), tag) == db.end()) {
-compMiss.inc();
-flag1 = 1;
-db.push_back(tag);
-if (capdb.size() == cache_size){
-    capdb.erase(capdb.begin()) ;
-    capdb.push_back(tag);
-
-}
-else capdb.push_back(tag);
-
-
-} else {
-    if ( std::find(capdb.begin(),capdb.end(),tag) == capdb.end()) {
-        capdb.erase(capdb.begin());        
-        capdb.push_back(tag);
-        flag2 = 1;
-        capMiss.inc();
-    } else
-    {
-        capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
-        capdb.push_back(tag);
-        confMiss.inc();
-    }
-    
-
-}
-
-// if (flag1 == 0 && flag2 == 0) // conflict misses
-// capMiss.inc();
-
-flag1=0;
-flag2=0;
+    calculateMissMetrics(tag);
 
 #if (defined TRACK_MPKI)
     DInst *dinst = mreq->getDInst();
@@ -565,16 +569,10 @@ void SMPCache::sendRead(MemRequest* mreq)
 void SMPCache::write(MemRequest *mreq)
 {
     PAddr addr = mreq->getPAddr();
-    PAddr tag = calcTag(addr);
 
     if (!outsReq->issue(addr)) {
         outsReq->addEntry(addr, doWriteCB::create(this, mreq),
                           doWriteCB::create(this, mreq));
-                                   if ( std::find(capdb.begin(),capdb.end(),tag) != capdb.end())
-            {
-                capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
-                capdb.push_back(tag);
-            }
         writeHalfMiss.inc();
         return;
     }
@@ -584,17 +582,10 @@ void SMPCache::write(MemRequest *mreq)
 
 void SMPCache::doWriteAgain(MemRequest *mreq) {
     PAddr addr = mreq->getPAddr();
-        PAddr tag = calcTag(addr);
-
     Line *l = cache->writeLine(addr);
     IJ(l && l->canBeWritten());
     if(l && l->canBeWritten()) {
         writeHit.inc();
-                 if ( std::find(capdb.begin(),capdb.end(),tag) != capdb.end())
-            {
-                capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
-                capdb.push_back(tag);
-            }
 #ifdef SESC_ENERGY
         wrEnergy[0]->inc();
 #endif
@@ -609,12 +600,9 @@ void SMPCache::doWriteAgain(MemRequest *mreq) {
 
 void SMPCache::doWrite(MemRequest *mreq)
 {
-   int flag1=0, flag2 =0;
-   int cache_size, assoc ;
-   cache_size = SescConf->getInt(tmpsection,"size") / SescConf->getInt(tmpsection,"bsize");
-   assoc =  SescConf->getInt(tmpsection,"assoc");    PAddr addr = mreq->getPAddr();
-    Line *l = cache->writeLine(addr);
+    PAddr addr = mreq->getPAddr();
     PAddr tag = calcTag(addr);
+    Line *l = cache->writeLine(addr);
 
     if(!(l && l->canBeWritten())) {
         DEBUGPRINT("[%s] write %x (%x) miss at %lld [state %x]\n",
@@ -623,17 +611,32 @@ void SMPCache::doWrite(MemRequest *mreq)
 
     if (l && l->canBeWritten()) {
         writeHit.inc();
-        if ( std::find(capdb.begin(),capdb.end(),tag) != capdb.end())
-            {
-                capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
-                capdb.push_back(tag);
-            }
 #ifdef SESC_ENERGY
         wrEnergy[0]->inc();
 #endif
         protocol->makeDirty(l);
         outsReq->retire(addr);
         mreq->goUp(hitDelay);
+	// Emulate an LRU cache
+	if (cacheMap.find(tag) == cacheMap.end()) // cache miss
+	{
+		// check if set is already full
+//		if (LRU_order.size() == nLines)
+		if (LRU_order.size() == cache->getNumLines())
+		{
+			// evict LRU line
+			cacheMap.erase(LRU_order.front());
+			LRU_order.erase(LRU_order.begin());
+		}
+	}
+	else // cache hit
+	{
+		// update position to be recently accessed
+		LRU_order.erase(std::find(LRU_order.begin(), LRU_order.end(), tag));
+	}
+
+	LRU_order.push_back(tag);
+	cacheMap[tag] = LRU_order.front();
         return;
     }
 
@@ -663,39 +666,7 @@ void SMPCache::doWrite(MemRequest *mreq)
 
     writeMiss.inc();
 
-
-if (std::find(db.begin(), db.end(), tag) == db.end()) {
-compMiss.inc();
-flag1 = 1;
-db.push_back(tag);
-if (capdb.size() == cache_size){
-    capdb.erase(capdb.begin()) ;
-    capdb.push_back(tag);
-
-}
-else capdb.push_back(tag);
-
-
-} else {
-    if ( std::find(capdb.begin(),capdb.end(),tag) == capdb.end()) {
-        capdb.erase(capdb.begin());        capdb.push_back(tag);
-        flag2 = 1;
-        capMiss.inc();
-    } else
-    {
-        capdb.erase( std::find(capdb.begin(),capdb.end(),tag));
-        capdb.push_back(tag);
-        confMiss.inc();
-    }
-    
-
-}
-
-// if (flag1 == 0 && flag2 == 0) // conflict misses
-// capMiss.inc();
-
-flag1=0;
-flag2=0;
+    calculateMissMetrics(tag);
 
 #ifdef SESC_ENERGY
     wrEnergy[1]->inc();
