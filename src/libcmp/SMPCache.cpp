@@ -29,6 +29,8 @@ Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "SMPSliceCache.h"
 
 #include "SMPRouter.h"
+#include "vector"  //changed
+#include <algorithm>
 
 #include <iomanip>
 
@@ -53,7 +55,6 @@ extern char* MemOperationStr[];
 SMPMemRequest::MESHSTRMAP SMPMemRequest::SMPMemReqStrMap;
 
 const char* SMPCache::cohOutfile = NULL;
-	
 // This cache works under the assumption that caches above it in the memory
 // hierarchy are write-through caches
 
@@ -86,6 +87,9 @@ SMPCache::SMPCache(SMemorySystem *dms, const char *section, const char *name)
     , writeHit("%s:writeHit", name)
     , readMiss("%s:readMiss", name)
     , writeMiss("%s:writeMiss", name)
+    // , compMiss("%s:compMiss", name)
+    // , capMiss("%s:capMiss", name)
+    // , confMiss("%s:confMiss", name)
     , readHalfMiss("%s:readHalfMiss", name)
     , writeHalfMiss("%s:writeHalfMiss", name)
     , writeBack("%s:writeBack", name)
@@ -95,7 +99,18 @@ SMPCache::SMPCache(SMemorySystem *dms, const char *section, const char *name)
     , writeRetry("%s:writeRetry", name)
     , invalDirty("%s:invalDirty", name)
     , allocDirty("%s:allocDirty", name)
+        , readCompMiss("%s:readCompMiss", name)
+    , readReplMiss("%s:readReplMiss", name)
+    , readCoheMiss("%s:readCoheMiss", name)
+    , writeCompMiss("%s:writeCompMiss", name)
+    , writeReplMiss("%s:writeReplMiss", name)
+    , writeCoheMiss("%s:writeCoheMiss", name)
 {
+ 
+    if (strcmp(SescConf->getCharPtr(section,"deviceType"), "smpcache") == 0)
+    {
+        current_section = section;
+    }
     MemObj *lowerLevel = NULL;
     //printf("%d\n", dms->getPID());
 
@@ -428,9 +443,68 @@ void SMPCache::read(MemRequest *mreq)
 
     doReadCB::scheduleAbs(nextSlot(), this, mreq);
 }
+void SMPCache::calculateMissMetrics(PAddr addr, MemOperation mem_op, Line *l)
+{
+	PAddr tag = calcTag(addr);
+	uint32_t setId = cache->calcSet4Tag(tag);
+	uint32_t numLinesPerSet = cache->getNumLines() / cache->getNumSets();
+	uint32_t index4set = cache->calcIndex4Set(setId);
+	uint32_t counter = 0;
+	bool prevTagIsInvalid = false;
 
+	// Calculate coherence misses due to invalidation.
+	// Check only the lines in the set to find any invalid lines
+	// and if the given tag matches the line's previous tag.
+	// Use this for both read and write coherence misses.
+	while (counter < numLinesPerSet)
+	{
+		Line *l = cache->getPLine(index4set);
+		if (l && !l->isValid() && (l->getPreviousTag() == tag))
+			prevTagIsInvalid = true;
+		counter++;
+		index4set++;
+	}
+
+	// Count read and write coherence misses slightly differently
+	if (mem_op == MemRead)
+	{
+		if (std::find(compulsory.begin(), compulsory.end(), tag) == compulsory.end())
+		{
+			readCompMiss.inc();
+			compulsory.push_back(tag);
+		}
+		else if (prevTagIsInvalid)
+		{
+			readCoheMiss.inc();
+		}
+		else
+		{
+			readReplMiss.inc();
+		}
+	}
+	else if (mem_op == MemWrite)
+	{
+		if (std::find(compulsory.begin(), compulsory.end(), tag) == compulsory.end())
+		{
+			writeCompMiss.inc();
+			compulsory.push_back(tag);
+		}
+		else if ((l && l->getState() == DMESI_SHARED) || prevTagIsInvalid)
+		{
+			// If line is shared, it can also cause a coherence miss because
+			// it results in a write delay.
+			// FIXME: do we need to care about the state at all at this point?
+			writeCoheMiss.inc();
+		}
+		else
+		{
+			writeReplMiss.inc();
+		}
+	}
+}
 void SMPCache::doRead(MemRequest *mreq)
 {
+//  int flag1=0, flag2 =0;
     PAddr addr = mreq->getPAddr();
     Line *l = cache->readLine(addr);
 
@@ -465,6 +539,7 @@ void SMPCache::doRead(MemRequest *mreq)
     GI(l, !l->isLocked());
 
     readMiss.inc();
+    calculateMissMetrics(addr, MemRead, l);
 
 #if (defined TRACK_MPKI)
     DInst *dinst = mreq->getDInst();
@@ -576,6 +651,7 @@ void SMPCache::doWrite(MemRequest *mreq)
     }
 
     writeMiss.inc();
+    calculateMissMetrics(addr, MemWrite, l);
 
 #ifdef SESC_ENERGY
     wrEnergy[1]->inc();
@@ -1714,110 +1790,6 @@ SMPCache::Line *SMPCache::allocateLine(PAddr addr, CallbackBase *cb,
         }
 
 #if 0
-        if(canDestroyCB)
-            cb->destroy();
-        l->invalidate();
-        l->setTag(cache->calcTag(addr));
-        return l;
-#endif
-
-        DEBUGPRINT("   [%s] INVALIDATE line %x (dirty? %d) changed from %x at %lld (for %x)\n",
-                   getSymbolicName(), cache->calcAddr4Tag(l->getTag()), wb, l->getState(), globalClock, addr);
-
-        if(l->getState()==MESI_EXCLUSIVE) {
-            //wb = true;
-            tk = true;
-            DEBUGPRINT("   [%s] INVALIDATE %x because its Exclusive at %lld (for %x)\n",
-                       getSymbolicName(), rpl_addr, globalClock, addr);
-        }
-        if(l->getState()==MESI_SHARED) {
-            //tk = true;
-            //DEBUGPRINT("   [%s] INVALIDATE %x because its Shared with Token at %lld (for %x)\n",
-            //		getSymbolicName(), rpl_addr, globalClock, addr);
-        }
-
-        l->changeStateTo(SMP_TRANS_INV);
-
-        DEBUGPRINT("   [%s] INVALIDATE %x at %lld (for %x)\n",
-                   getSymbolicName(), rpl_addr, globalClock, addr);
-        DEBUGPRINT("   [%s] INVALIDATE line %x changed to %x at %lld (for %x)\n",
-                   getSymbolicName(), cache->calcAddr4Tag(l->getTag()), l->getState(), globalClock, addr);
-
-        sendInvDirUpdate(rpl_addr, addr, cb, wb, tk);
-        return 0; // We need to send message back and forth
-    }
-
-    IJ(0);
-    return 0;
-#if 0
-    I(pendInvTable.find(rpl_addr) == pendInvTable.end());
-    pendInvTable[rpl_addr].outsResps = getNumCachesInUpperLevels();
-    pendInvTable[rpl_addr].cb = doAllocateLineCB::create(this, addr, rpl_addr, cb);
-    pendInvTable[rpl_addr].invalidate = false;
-    pendInvTable[rpl_addr].writeback = true;
-
-    protocol->preInvalidate(l);
-
-    invUpperLevel(rpl_addr, cache->getLineSize(), this);
-
-    return 0;
-#endif
-
-#if 0
-    PAddr rpl_addr = 0;
-    I(cache->findLineDebug(addr) == 0);
-    Line *l = cache->findLine2Replace(addr);
-
-    if(!l) {
-        // need to schedule allocate line for next cycle
-        doAllocateLineCB::scheduleAbs(globalClock+1, this, addr, 0, cb);
-        return 0;
-    }
-
-    rpl_addr = cache->calcAddr4Tag(l->getTag());
-    lineFill.inc();
-
-    nextSlot(); // have to do an access to check which line is free
-
-    if(!l->isValid()) {
-        if(canDestroyCB)
-            cb->destroy();
-        l->setTag(cache->calcTag(addr));
-        return l;
-    }
-
-    if(isHighestLevel()) {
-        if(l->isDirty()) {
-            allocDirty.inc();
-            doWriteBack(rpl_addr);
-        }
-
-        if(canDestroyCB)
-            cb->destroy();
-        l->invalidate();
-        l->setTag(cache->calcTag(addr));
-        DEBUGPRINT("   [%s] INVALIDATE %x at %lld (for %x)\n",
-                   getSymbolicName(), rpl_addr, globalClock, addr);
-        return l;
-    }
-
-    I(pendInvTable.find(rpl_addr) == pendInvTable.end());
-    pendInvTable[rpl_addr].outsResps = getNumCachesInUpperLevels();
-    pendInvTable[rpl_addr].cb = doAllocateLineCB::create(this, addr, rpl_addr, cb);
-    pendInvTable[rpl_addr].invalidate = false;
-    pendInvTable[rpl_addr].writeback = true;
-
-    protocol->preInvalidate(l);
-
-    invUpperLevel(rpl_addr, cache->getLineSize(), this);
-
-    return 0;
-#endif
-}
-
-void SMPCache::doAllocateLine(PAddr addr, PAddr rpl_addr, CallbackBase *cb)
-{
-    // this is very dangerous (don't do it at home) if rpl_addr is zer0
         if(canDestroyCB)
             cb->destroy();
         l->invalidate();

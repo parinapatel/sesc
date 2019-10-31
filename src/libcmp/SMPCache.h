@@ -98,6 +98,13 @@ protected:
     GStatsCntr invalDirty;
     GStatsCntr allocDirty;
 
+    GStatsCntr readCompMiss;
+    GStatsCntr readReplMiss;
+    GStatsCntr readCoheMiss;
+    GStatsCntr writeCompMiss;
+    GStatsCntr writeReplMiss;
+    GStatsCntr writeCoheMiss;
+
 #ifdef SESC_ENERGY
     static unsigned cacheID;
     unsigned myID;
@@ -129,6 +136,9 @@ protected:
 
     // local routines
     void doRead(MemRequest *mreq);
+    bool prevTagIsInvalid(PAddr tag); // *DTN: see if previous tag in cache line was invalidated
+    void calculateMissMetrics(PAddr addr, MemOperation op, Line *l); // *DTN: count miss types
+
     // JJO
     void doReadRemote(MemRequest *mreq);
     void doWrite(MemRequest *mreq);
@@ -202,6 +212,8 @@ public:
 	std::map<PAddr, bool> replyReady;
 	std::map<PAddr, Time_t> replyReadyTime;
     HASH_MAP<PAddr, CallbackBase* > pendRemoteRead;
+
+    std::vector<PAddr> compulsory; // cold cache tracking
 
 
     //void updateDirectory(SMPMemRequest *sreq);
