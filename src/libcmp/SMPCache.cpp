@@ -106,11 +106,6 @@ SMPCache::SMPCache(SMemorySystem *dms, const char *section, const char *name)
     , writeReplMiss("%s:writeReplMiss", name)
     , writeCoheMiss("%s:writeCoheMiss", name)
 {
- 
-    if (strcmp(SescConf->getCharPtr(section,"deviceType"), "smpcache") == 0)
-    {
-        current_section = section;
-    }
     MemObj *lowerLevel = NULL;
     //printf("%d\n", dms->getPID());
 
