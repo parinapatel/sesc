@@ -1817,6 +1817,110 @@ SMPCache::Line *SMPCache::allocateLine(PAddr addr, CallbackBase *cb,
 
 void SMPCache::doAllocateLine(PAddr addr, PAddr rpl_addr, CallbackBase *cb)
 {
+    // this is very dangerous (don't do it at home) if rpl_addr is zer0
+        if(canDestroyCB)
+            cb->destroy();
+        l->invalidate();
+        l->setTag(cache->calcTag(addr));
+        return l;
+#endif
+
+        DEBUGPRINT("   [%s] INVALIDATE line %x (dirty? %d) changed from %x at %lld (for %x)\n",
+                   getSymbolicName(), cache->calcAddr4Tag(l->getTag()), wb, l->getState(), globalClock, addr);
+
+        if(l->getState()==MESI_EXCLUSIVE) {
+            //wb = true;
+            tk = true;
+            DEBUGPRINT("   [%s] INVALIDATE %x because its Exclusive at %lld (for %x)\n",
+                       getSymbolicName(), rpl_addr, globalClock, addr);
+        }
+        if(l->getState()==MESI_SHARED) {
+            //tk = true;
+            //DEBUGPRINT("   [%s] INVALIDATE %x because its Shared with Token at %lld (for %x)\n",
+            //		getSymbolicName(), rpl_addr, globalClock, addr);
+        }
+
+        l->changeStateTo(SMP_TRANS_INV);
+
+        DEBUGPRINT("   [%s] INVALIDATE %x at %lld (for %x)\n",
+                   getSymbolicName(), rpl_addr, globalClock, addr);
+        DEBUGPRINT("   [%s] INVALIDATE line %x changed to %x at %lld (for %x)\n",
+                   getSymbolicName(), cache->calcAddr4Tag(l->getTag()), l->getState(), globalClock, addr);
+
+        sendInvDirUpdate(rpl_addr, addr, cb, wb, tk);
+        return 0; // We need to send message back and forth
+    }
+
+    IJ(0);
+    return 0;
+#if 0
+    I(pendInvTable.find(rpl_addr) == pendInvTable.end());
+    pendInvTable[rpl_addr].outsResps = getNumCachesInUpperLevels();
+    pendInvTable[rpl_addr].cb = doAllocateLineCB::create(this, addr, rpl_addr, cb);
+    pendInvTable[rpl_addr].invalidate = false;
+    pendInvTable[rpl_addr].writeback = true;
+
+    protocol->preInvalidate(l);
+
+    invUpperLevel(rpl_addr, cache->getLineSize(), this);
+
+    return 0;
+#endif
+
+#if 0
+    PAddr rpl_addr = 0;
+    I(cache->findLineDebug(addr) == 0);
+    Line *l = cache->findLine2Replace(addr);
+
+    if(!l) {
+        // need to schedule allocate line for next cycle
+        doAllocateLineCB::scheduleAbs(globalClock+1, this, addr, 0, cb);
+        return 0;
+    }
+
+    rpl_addr = cache->calcAddr4Tag(l->getTag());
+    lineFill.inc();
+
+    nextSlot(); // have to do an access to check which line is free
+
+    if(!l->isValid()) {
+        if(canDestroyCB)
+            cb->destroy();
+        l->setTag(cache->calcTag(addr));
+        return l;
+    }
+
+    if(isHighestLevel()) {
+        if(l->isDirty()) {
+            allocDirty.inc();
+            doWriteBack(rpl_addr);
+        }
+
+        if(canDestroyCB)
+            cb->destroy();
+        l->invalidate();
+        l->setTag(cache->calcTag(addr));
+        DEBUGPRINT("   [%s] INVALIDATE %x at %lld (for %x)\n",
+                   getSymbolicName(), rpl_addr, globalClock, addr);
+        return l;
+    }
+
+    I(pendInvTable.find(rpl_addr) == pendInvTable.end());
+    pendInvTable[rpl_addr].outsResps = getNumCachesInUpperLevels();
+    pendInvTable[rpl_addr].cb = doAllocateLineCB::create(this, addr, rpl_addr, cb);
+    pendInvTable[rpl_addr].invalidate = false;
+    pendInvTable[rpl_addr].writeback = true;
+
+    protocol->preInvalidate(l);
+
+    invUpperLevel(rpl_addr, cache->getLineSize(), this);
+
+    return 0;
+#endif
+}
+
+void SMPCache::doAllocateLine(PAddr addr, PAddr rpl_addr, CallbackBase *cb)
+{
     // this is very dangerous (don't do it at home) if rpl_addr is zero,
     // it means allocateLine was not able to allocate a line at its last
     // try probably because all lines in the set were
