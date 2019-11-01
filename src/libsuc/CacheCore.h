@@ -391,7 +391,7 @@ public:
         return tag;
     }
 
-    Addr_t getPrivtag() cost {
+    Addr_t getPreviousTag() const {
         return prev_tag;
     }
     void setTag(Addr_t a) {
