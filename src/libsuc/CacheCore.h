@@ -380,6 +380,7 @@ template<class Addr_t=uint32_t>
 class StateGeneric {
 private:
     Addr_t tag;
+    Addr_t prev_tag;
 
 public:
     virtual ~StateGeneric() {
@@ -388,6 +389,10 @@ public:
 
     Addr_t getTag() const {
         return tag;
+    }
+
+    Addr_t getPrivtag() cost {
+        return prev_tag;
     }
     void setTag(Addr_t a) {
         I(a);
@@ -405,6 +410,7 @@ public:
     }
 
     virtual void invalidate() {
+        prev_tag = tag;
         clearTag();
     }
 
