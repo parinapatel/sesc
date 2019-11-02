@@ -30,6 +30,7 @@ Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "nanassert.h"
 #include "Snippets.h"
 #include "GStats.h"
+#include <iostream>
 
 enum    ReplacementPolicy  {LRU, RANDOM};
 
@@ -391,14 +392,18 @@ public:
         return tag;
     }
 
-    Addr_t getPreviousTag() const {
+    Addr_t getPreviousTag() {
+        // std::cout << "returning Prv tag" << prev_tag << std::endl;
         return prev_tag;
     }
     void setTag(Addr_t a) {
         I(a);
         tag = a;
+        // std::cout << tag << std::endl;
     }
     void clearTag() {
+        prev_tag = tag;
+        // std::cout << prev_tag << std::endl;
         tag = 0;
     }
     void initialize(void *c) {
@@ -410,7 +415,6 @@ public:
     }
 
     virtual void invalidate() {
-        prev_tag = tag;
         clearTag();
     }
 

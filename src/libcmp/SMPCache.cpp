@@ -99,7 +99,7 @@ SMPCache::SMPCache(SMemorySystem *dms, const char *section, const char *name)
     , writeRetry("%s:writeRetry", name)
     , invalDirty("%s:invalDirty", name)
     , allocDirty("%s:allocDirty", name)
-        , readCompMiss("%s:readCompMiss", name)
+    , readCompMiss("%s:readCompMiss", name)
     , readReplMiss("%s:readReplMiss", name)
     , readCoheMiss("%s:readCoheMiss", name)
     , writeCompMiss("%s:writeCompMiss", name)
@@ -454,8 +454,9 @@ void SMPCache::calculateMissMetrics(PAddr addr, MemOperation mem_op, Line *l)
 	while (counter < numLinesPerSet)
 	{
 		Line *l = cache->getPLine(index4set);
-		if (l && !l->isValid() && (l->getPreviousTag() == tag))
-			prevTagIsInvalid = true;
+		if (l && !l->isValid() && (l->getPreviousTag() == tag)){
+            // std::cout << "Previous tag:" << l->getPreviousTag() << std::endl;
+			prevTagIsInvalid = true;}
 		counter++;
 		index4set++;
 	}

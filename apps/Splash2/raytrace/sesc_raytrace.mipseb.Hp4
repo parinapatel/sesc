@@ -1,8 +1,8 @@
-#BEGIN Configuration used. Extracted from "/home/cs6290/sesc/confs/cmp4-noc.conf":
-cpucore[0:3]='issueX'
+#BEGIN Configuration used. Extracted from "/home/cs6290/sesc/confs/cmp16-noc.conf":
+cpucore[0:15]='issueX'
 NoMigration=true
 pageSize  =4096
-procsPerNode=4
+procsPerNode=16
 technology='techParam'
 [BPredIssueX]
 Metasize  =2048
@@ -84,7 +84,7 @@ maxStores =36
 booksim_output='booksim.log'
 deviceType='booksim'
 booksim_sample=1000000
-booksim_config='mesh22.booksim'
+booksim_config='mesh44.booksim'
 lowerLevel="MemoryCtrl MemCtrl shared"
 [FXITLB]
 size      =512
@@ -184,13 +184,13 @@ bsize     =64
 type      ='single'
 size      =64
 [Router]
-dimY      =2
+dimY      =4
 numPorts  =2
 deviceType='router'
 lowerLevel="NOC NOC shared"
 portOccp  =1
 delay     =1
-dimX      =2
+dimX      =4
 [iMSHR]
 type      ='single'
 size      =32
@@ -210,4 +210,4 @@ Num       =1
 Occ       =1
 [techParam]
 frequency =1.000000e+09
-#END Configuration used. Extracted from "/home/cs6290/sesc/confs/cmp4-noc.conf":
+#END Configuration used. Extracted from "/home/cs6290/sesc/confs/cmp16-noc.conf":
