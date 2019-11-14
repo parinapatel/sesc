@@ -402,7 +402,7 @@ public:
         // std::cout << tag << std::endl;
     }
     void clearTag() {
-        prev_tag = tag;
+        prev_tag = tag; 
         // std::cout << prev_tag << std::endl;
         tag = 0;
     }
