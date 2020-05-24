@@ -30,8 +30,9 @@ Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "nanassert.h"
 #include "Snippets.h"
 #include "GStats.h"
+#include <iostream>
 
-enum    ReplacementPolicy  {LRU, RANDOM, NXLRU};
+enum    ReplacementPolicy  {LRU, RANDOM};
 
 #ifdef SESC_ENERGY
 template<class State, class Addr_t = uint32_t, bool Energy=true>
@@ -380,6 +381,7 @@ template<class Addr_t=uint32_t>
 class StateGeneric {
 private:
     Addr_t tag;
+    Addr_t prev_tag;
 
 public:
     virtual ~StateGeneric() {
@@ -389,11 +391,19 @@ public:
     Addr_t getTag() const {
         return tag;
     }
+
+    Addr_t getPreviousTag() {
+        // std::cout << "returning Prv tag" << prev_tag << std::endl;
+        return prev_tag;
+    }
     void setTag(Addr_t a) {
         I(a);
         tag = a;
+        // std::cout << tag << std::endl;
     }
     void clearTag() {
+        prev_tag = tag; 
+        // std::cout << prev_tag << std::endl;
         tag = 0;
     }
     void initialize(void *c) {

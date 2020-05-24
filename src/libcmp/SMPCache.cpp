@@ -29,10 +29,11 @@ Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "SMPSliceCache.h"
 
 #include "SMPRouter.h"
+#include "vector"  //changed
+#include <algorithm>
 
 #include <iomanip>
-#include "vector"
-#include <algorithm>
+
 #if (defined DEBUG_LEAK)
 Time_t Directory::lastClock = 0;
 uint64_t Directory::totCnt = 0;
@@ -54,7 +55,6 @@ extern char* MemOperationStr[];
 SMPMemRequest::MESHSTRMAP SMPMemRequest::SMPMemReqStrMap;
 
 const char* SMPCache::cohOutfile = NULL;
-	
 // This cache works under the assumption that caches above it in the memory
 // hierarchy are write-through caches
 
@@ -80,13 +80,16 @@ const char* SMPCache::cohOutfile = NULL;
 #ifdef SESC_ENERGY
 unsigned SMPCache::cacheID = 0;
 #endif
-const char* current_section ;
+
 SMPCache::SMPCache(SMemorySystem *dms, const char *section, const char *name)
     : MemObj(section, name)
     , readHit("%s:readHit", name)
     , writeHit("%s:writeHit", name)
     , readMiss("%s:readMiss", name)
     , writeMiss("%s:writeMiss", name)
+    // , compMiss("%s:compMiss", name)
+    // , capMiss("%s:capMiss", name)
+    // , confMiss("%s:confMiss", name)
     , readHalfMiss("%s:readHalfMiss", name)
     , writeHalfMiss("%s:writeHalfMiss", name)
     , writeBack("%s:writeBack", name)
@@ -96,15 +99,16 @@ SMPCache::SMPCache(SMemorySystem *dms, const char *section, const char *name)
     , writeRetry("%s:writeRetry", name)
     , invalDirty("%s:invalDirty", name)
     , allocDirty("%s:allocDirty", name)
-    , compMiss("%s:compMiss", name)
-    , capMiss("%s:capMiss", name)
-    , confMiss("%s:confMiss", name)
-
+    , readCompMiss("%s:readCompMiss", name)
+    , readReplMiss("%s:readReplMiss", name)
+    , readCoheMiss("%s:readCoheMiss", name)
+    , writeCompMiss("%s:writeCompMiss", name)
+    , writeReplMiss("%s:writeReplMiss", name)
+    , writeCoheMiss("%s:writeCoheMiss", name)
 {
     MemObj *lowerLevel = NULL;
     //printf("%d\n", dms->getPID());
-    //Sets global varible to get information about current section in other functions.
-    current_section = section;
+
     I(dms);
     lowerLevel = dms->declareMemoryObj(section, "lowerLevel");
 
@@ -434,10 +438,69 @@ void SMPCache::read(MemRequest *mreq)
 
     doReadCB::scheduleAbs(nextSlot(), this, mreq);
 }
+void SMPCache::calculateMissMetrics(PAddr addr, MemOperation mem_op, Line *l)
+{
+	PAddr tag = calcTag(addr);
+	uint32_t setId = cache->calcSet4Tag(tag);
+	uint32_t numLinesPerSet = cache->getNumLines() / cache->getNumSets();
+	uint32_t index4set = cache->calcIndex4Set(setId);
+	uint32_t counter = 0;
+	bool prevTagIsInvalid = false;
 
+	// Calculate coherence misses due to invalidation.
+	// Check only the lines in the set to find any invalid lines
+	// and if the given tag matches the line's previous tag.
+	// Use this for both read and write coherence misses.
+	while (counter < numLinesPerSet)
+	{
+		Line *l = cache->getPLine(index4set);
+		if (l && !l->isValid() && (l->getPreviousTag() == tag)){
+            // std::cout << "Previous tag:" << l->getPreviousTag() << std::endl;
+			prevTagIsInvalid = true;}
+		counter++;
+		index4set++;
+	}
+
+	// Count read and write coherence misses slightly differently
+	if (mem_op == MemRead)
+	{
+		if (std::find(compulsory.begin(), compulsory.end(), tag) == compulsory.end())
+		{
+			readCompMiss.inc();
+			compulsory.push_back(tag);
+		}
+		else if (prevTagIsInvalid)
+		{
+			readCoheMiss.inc();
+		}
+		else
+		{
+			readReplMiss.inc();
+		}
+	}
+	else if (mem_op == MemWrite)
+	{
+		if (std::find(compulsory.begin(), compulsory.end(), tag) == compulsory.end())
+		{
+			writeCompMiss.inc();
+			compulsory.push_back(tag);
+		}
+		else if ((l && l->getState() == DMESI_SHARED) || prevTagIsInvalid)
+		{
+			// If line is shared, it can also cause a coherence miss because
+			// it results in a write delay.
+			// FIXME: do we need to care about the state at all at this point?
+			writeCoheMiss.inc();
+		}
+		else
+		{
+			writeReplMiss.inc();
+		}
+	}
+}
 void SMPCache::doRead(MemRequest *mreq)
 {
-    bool cap_flag = false , comp_flag = false;
+//  int flag1=0, flag2 =0;
     PAddr addr = mreq->getPAddr();
     Line *l = cache->readLine(addr);
 
@@ -472,23 +535,7 @@ void SMPCache::doRead(MemRequest *mreq)
     GI(l, !l->isLocked());
 
     readMiss.inc();
-    PAddr tag = calcTag(addr);
-    if (std::find(address_space.begin(), address_space.end(), tag) == address_space.end())
-    {
-        compMiss.inc();
-        address_space.push_back(tag);
-    }
-    else
-    {
-        if (address_space.size() >= 512)
-        {
-            capMiss.inc();
-        }
-        else
-        {
-            confMiss.inc();
-        }
-    }
+    calculateMissMetrics(addr, MemRead, l);
 
 #if (defined TRACK_MPKI)
     DInst *dinst = mreq->getDInst();
@@ -558,7 +605,7 @@ void SMPCache::doWrite(MemRequest *mreq)
 {
     PAddr addr = mreq->getPAddr();
     Line *l = cache->writeLine(addr);
-    bool comp_flag = false , cap_flag = false;
+
     if(!(l && l->canBeWritten())) {
         DEBUGPRINT("[%s] write %x (%x) miss at %lld [state %x]\n",
                    getSymbolicName(), addr, calcTag(addr), globalClock, (l?l->getState():-1) );
@@ -600,24 +647,8 @@ void SMPCache::doWrite(MemRequest *mreq)
     }
 
     writeMiss.inc();
-    PAddr tag = calcTag(addr);
-    if (std::find(address_space.begin(), address_space.end(), tag) == address_space.end())
-    {
-        compMiss.inc();
-        address_space.push_back(tag);
-    }
-    else
-    {
-        if (address_space.size() >= 512)
-        {
-            capMiss.inc();
-        }
-        else
-        {
-            confMiss.inc();
-        }
-    }
-    
+    calculateMissMetrics(addr, MemWrite, l);
+
 #ifdef SESC_ENERGY
     wrEnergy[1]->inc();
 #endif
